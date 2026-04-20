@@ -1,0 +1,3 @@
+mode,pingall_loss_pct,throughput_mbps,packet_loss_pct,packet_delivery_pct,latency_avg_ms,congestion_response_s,reroute_packets,reroute_observed,policy_activated_count
+before_adaptive,0.0,4.193,0.0,100.0,5.7,,0,False,0
+after_adaptive,0.0,5.452,0.0,100.0,5.866,0.001,0,True,1

@@ -1,0 +1,113 @@
+{
+  "adaptive_improves_over_static": {
+    "adaptive_policy_activated": true,
+    "adaptive_reroute_observed": true,
+    "latency_not_worse": false,
+    "packet_delivery_not_worse": true,
+    "static_policy_inactive": true,
+    "throughput_not_worse": true
+  },
+  "after_adaptive": {
+    "congestion_response_s": null,
+    "latency_avg_ms": 5.606,
+    "mode": "after_adaptive",
+    "packet_delivery_pct": 100.0,
+    "packet_loss_pct": 0.0,
+    "pingall_loss_pct": 0.0,
+    "policy_activated_count": 1,
+    "reroute_observed": true,
+    "reroute_packets": 0,
+    "throughput_mbps": 5.451
+  },
+  "before_adaptive": {
+    "congestion_response_s": null,
+    "latency_avg_ms": 5.5,
+    "mode": "before_adaptive",
+    "packet_delivery_pct": 100.0,
+    "packet_loss_pct": 0.0,
+    "pingall_loss_pct": 0.0,
+    "policy_activated_count": 0,
+    "reroute_observed": false,
+    "reroute_packets": 0,
+    "throughput_mbps": 4.403
+  },
+  "benefits": {
+    "latency_reduction_ms": -0.106,
+    "packet_delivery_gain_pct": 0.0,
+    "packet_loss_reduction_pct": 0.0,
+    "response_time_reduction_s": null,
+    "throughput_gain_mbps": 1.048
+  },
+  "controller_thresholds": {
+    "after_adaptive": {
+      "congest_high_mbps": 15.0,
+      "congest_low_mbps": 6.0,
+      "port_congest_high_pct": 80.0,
+      "port_congest_low_pct": 65.0
+    },
+    "before_adaptive": {
+      "congest_high_mbps": 10000.0,
+      "congest_low_mbps": 9000.0,
+      "port_congest_high_pct": 80.0,
+      "port_congest_low_pct": 65.0
+    }
+  },
+  "evidence_paths": {
+    "after_json": "/home/patrick/mininet/results/adaptive_eval_20260405_230908_adaptive.json",
+    "before_json": "/home/patrick/mininet/results/adaptive_eval_20260405_230908_static.json"
+  },
+  "improvements": {
+    "congestion_response_delta_s": null,
+    "latency_delta_ms": 0.106,
+    "packet_delivery_delta_pct": 0.0,
+    "packet_loss_delta_pct": 0.0,
+    "reroute_packet_delta": 0,
+    "throughput_delta_mbps": 1.048
+  },
+  "measurable_project_results": [
+    "Pingall connectivity was preserved in both runs (loss: 0.0% before, 0.0% after).",
+    "Protected-flow throughput under congestion changed from 4.403 Mbps to 5.451 Mbps.",
+    "Packet delivery under congestion changed from 100.0% to 100.0%.",
+    "Average latency under congestion changed from 5.5 ms to 5.606 ms.",
+    "Adaptive response time under congestion was n/a s.",
+    "Reroute evidence packets on the backup path changed from 0 to 0."
+  ],
+  "notes": [
+    "before_adaptive uses very high thresholds so adaptive reroute should remain inactive during the congestion window.",
+    "after_adaptive uses low thresholds so adaptive reroute should activate under congestion.",
+    "reroute_packets > 0 indicates traffic observed on the backup server interface.",
+    "Throughput and latency values are recorded during the congestion window, not only at startup."
+  ],
+  "source_derived_metrics": {
+    "after": {
+      "baseline_packet_delivery_pct": 100.0,
+      "congestion_loss_pct": 0.0,
+      "congestion_packet_delivery_pct": 100.0,
+      "congestion_rtt_avg_ms": 5.606,
+      "latency_delta_ms": -0.048,
+      "reroute_evidence_packets": 0,
+      "reroute_observed": true,
+      "throughput_delta_mbps": -27.883,
+      "throughput_delta_pct": -83.646
+    },
+    "before": {
+      "baseline_packet_delivery_pct": 100.0,
+      "congestion_loss_pct": 0.0,
+      "congestion_packet_delivery_pct": 100.0,
+      "congestion_rtt_avg_ms": 5.5,
+      "latency_delta_ms": -0.226,
+      "reroute_evidence_packets": 0,
+      "reroute_observed": false,
+      "throughput_delta_mbps": -28.933,
+      "throughput_delta_pct": -86.791
+    }
+  },
+  "tag": "20260405_230908",
+  "test_matrix": {
+    "congestion_test": "Wi-Fi reverse-download stress over a shared bottleneck in both runs",
+    "iperf3": "reverse-download throughput probe recorded in both runs",
+    "latency_test": "ICMP RTT probe to the protected service IP in both runs",
+    "pingall": "explicit connectivity test recorded in both runs"
+  },
+  "ts": "2026-04-05T21:10:54.422215+00:00"
+}

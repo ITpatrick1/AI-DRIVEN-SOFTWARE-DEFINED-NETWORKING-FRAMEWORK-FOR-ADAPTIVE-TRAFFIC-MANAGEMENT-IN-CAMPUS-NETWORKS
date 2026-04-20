@@ -1,0 +1,3 @@
+scenario,throughput_mbps,packet_delivery_pct,loss_pct,rtt_avg_ms,tx,rx,backup_icmp_packets,reroute_seen_during_probe,iperf_error
+baseline,33.3363893699354,100.0,0.0,5.726,10,10,0,False,
+congestion,4.40306637643614,100.0,0.0,5.5,18,18,0,False,

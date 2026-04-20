@@ -88,6 +88,7 @@ method may be called to shut down the network.
 
 import os
 import re
+import json
 import select
 import signal
 import random
@@ -837,22 +838,40 @@ class Mininet( object ):
         server.sendCmd( iperfArgs + '-s' )
         serverip = server.IP()
         if l4Type == 'TCP':
-            if not waitListening( client, serverip, port ):
-                raise Exception( 'Could not connect to iperf on port %d'
-                                 % port )
-        cliout = client.cmd( iperfArgs + '-t %d -c ' % seconds +
+            waitTimeout = max( int( seconds ) + 2, 5 )
+            if not waitListening( client, serverip, port, timeout=waitTimeout ):
+                warn( '*** Warning: iperf2 server did not listen on port %d; '
+                      'falling back to iperf3\n' % port )
+                return self.iperf3( hosts=hosts, fmt=fmt, seconds=seconds )
+        cliout = client.cmd( 'timeout %d ' % max( int( seconds ) + 10, 15 ) +
+                             iperfArgs + '-t %d -c ' % seconds +
                              server.IP() + ' ' + bwArgs )
         cvals = self._iperfVals( cliout, serverip )
         debug( 'iperf client output:', cliout, cvals )
+        if not cvals or 'sport' not in cvals or 'rate' not in cvals:
+            server.sendInt()
+            server.waitOutput()
+            warn( '*** Warning: iperf2 client output parse failed; '
+                  'falling back to iperf3\n' )
+            return self.iperf3( hosts=hosts, fmt=fmt, seconds=seconds )
         serverout = ''
         # Wait for output from the client session
-        while True:
-            serverout += server.monitor( timeoutms=5000 )
+        # Guard against rare hangs if server output cannot be parsed.
+        waitSecs = max( int( seconds ) + 5, 10 )
+        polls = int( waitSecs * 2 )
+        svals = {}
+        for _ in range( polls ):
+            serverout += server.monitor( timeoutms=500 )
             svals = self._iperfVals( serverout, serverip )
             # Check for the client's source/output port
             if ( svals and cvals[ 'sport' ] == svals[ 'sport' ]
                  and int( svals[ 'rate' ] ) > 0 ):
                 break
+        if ( not svals or 'sport' not in svals or
+             cvals[ 'sport' ] != svals[ 'sport' ] ):
+            warn( '*** Warning: iperf server output timed out after %s '
+                  'seconds; using client-side result\n' % waitSecs )
+            svals = { 'sport': cvals[ 'sport' ], 'rate': cvals[ 'rate' ] }
         debug( 'iperf server output:', serverout, svals )
         server.sendInt()
         serverout += server.waitOutput()
@@ -860,6 +879,54 @@ class Mininet( object ):
                    fmtBps( cvals[ 'rate' ], fmt ) ]
         if l4Type == 'UDP':
             result.insert( 0, udpBw )
+        output( '*** Results: %s\n' % result )
+        return result
+
+    def iperf3( self, hosts=None, fmt=None, seconds=5, port=5201 ):
+        """Run iperf3 TCP test between two hosts.
+           returns: two-element array [ server, client ] speeds"""
+        hosts = hosts or [ self.hosts[ 0 ], self.hosts[ -1 ] ]
+        assert len( hosts ) == 2
+        client, server = hosts
+        output( '*** Iperf3: testing TCP bandwidth between',
+                client, 'and', server, '\n' )
+
+        # Clean possible stale iperf3 server and start a bounded server.
+        # Note: do not use "-1" here because waitListening() performs
+        # a probe connection that would consume the single allowed session.
+        server.cmd( 'pkill -9 -f "iperf3 -s -p %d"' % port )
+        timeoutSecs = max( int( seconds ) + 10, 15 )
+        server.sendCmd( 'timeout %d iperf3 -s -p %d' %
+                        ( timeoutSecs, port ) )
+        serverip = server.IP()
+        if not waitListening( client, serverip, port, timeout=5 ):
+            server.sendInt()
+            server.waitOutput()
+            raise Exception( 'Could not connect to iperf3 on port %d'
+                             % port )
+
+        cliout = client.cmd(
+            'timeout %d iperf3 -J -c %s -p %d -t %d' %
+            ( timeoutSecs, serverip, port, int( seconds ) )
+        )
+        server.sendInt()
+        server.waitOutput()
+
+        rate = None
+        try:
+            summary = json.loads( cliout ).get( 'end', {} )
+            received = summary.get( 'sum_received', {} )
+            sent = summary.get( 'sum_sent', {} )
+            rate = received.get( 'bits_per_second' ) or sent.get(
+                'bits_per_second' )
+        except Exception:
+            rate = None
+
+        if not rate:
+            raise Exception( 'Could not parse iperf3 client output:\n%s'
+                             % cliout )
+
+        result = [ fmtBps( rate, fmt ), fmtBps( rate, fmt ) ]
         output( '*** Results: %s\n' % result )
         return result
 

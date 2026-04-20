@@ -1,0 +1,369 @@
+{
+  "baseline": {
+    "loss_pct": 0.0,
+    "rtt_avg_ms": 7.375,
+    "rtt_max_ms": 12.185,
+    "rtt_mdev_ms": 1.858,
+    "rtt_min_ms": 6.228,
+    "rx": 8,
+    "scenario": "baseline",
+    "throughput_mbps": 93.8108977369817,
+    "tx": 8
+  },
+  "congestion": {
+    "backup_icmp_packets": 0,
+    "loss_pct": 0.0,
+    "reroute_seen_during_probe": true,
+    "reroute_wait_s": 2.302,
+    "rtt_avg_ms": 18.329,
+    "rtt_max_ms": 103.377,
+    "rtt_mdev_ms": 24.863,
+    "rtt_min_ms": 6.416,
+    "rx": 14,
+    "scenario": "congestion",
+    "throughput_mbps": 0.0,
+    "tx": 14
+  },
+  "controller_metrics": {
+    "congest_high_mbps": 20.0,
+    "congest_low_mbps": 19.0,
+    "congested_ports": [
+      {
+        "dpid": 3,
+        "port": 3
+      }
+    ],
+    "congested_ports_count": 1,
+    "connected_switches": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ],
+    "controller_flow_mods": 194,
+    "controller_mac_learns": 70,
+    "controller_packet_ins": 282,
+    "core_primary_mbps": 75.26503291786668,
+    "core_wifi_mbps": 0.0,
+    "dqn_decision_timeout_s": 6.0,
+    "dqn_integration_enabled": false,
+    "dqn_last_action_name": "prefer_backup_path",
+    "dqn_last_decision_ts": 0.0,
+    "dqn_last_trigger_reason": null,
+    "dqn_last_trigger_ts": 0.0,
+    "dqn_pending_decision": false,
+    "events_file": "/tmp/campus_policy_events.jsonl",
+    "last_ml_q_values": {
+      "emergency_throttle": 1.92921,
+      "keep_primary": 1.8274,
+      "prefer_backup_path": 2.09016,
+      "relax_thresholds": 2.03488,
+      "tighten_thresholds": 1.95695
+    },
+    "last_ml_routing_choice": "backup_path",
+    "metrics_file": "/tmp/campus_metrics.json",
+    "ml_action_file": "/tmp/campus_ml_action.json",
+    "policy_engine_cookie": 3405647873,
+    "policy_engine_rules": {
+      "2": 33,
+      "3": 33,
+      "4": 33,
+      "5": 33
+    },
+    "port_congest_high_pct": 40.0,
+    "port_congest_low_pct": 30.0,
+    "priority_profiles": {
+      "authentication_traffic": {
+        "description": "DHCP/RADIUS authentication traffic",
+        "match": "udp dst 67,68,1812,1813 to 10.0.0.100",
+        "queue": 0
+      },
+      "critical": {
+        "description": "IT/staff and control traffic",
+        "queue": 0
+      },
+      "entertainment_bulk_download": {
+        "description": "Bulk/entertainment flows",
+        "match": "tcp dst 5201,8080,6881 to 10.0.0.100",
+        "queue": 2
+      },
+      "exam_traffic": {
+        "description": "Exam platform/app traffic",
+        "match": "tcp dst 8443 to 10.0.0.100",
+        "queue": 0
+      },
+      "normal_browsing": {
+        "description": "Normal web/application browsing",
+        "match": "tcp dst 80,443 to 10.0.0.100",
+        "queue": 1
+      },
+      "student_bulk": {
+        "description": "Student bulk/download traffic under congestion",
+        "queue": 2,
+        "throttle_active": true
+      }
+    },
+    "reroute_active": true,
+    "student_throttle_active": true,
+    "switch_port_mbps": {
+      "1": {
+        "1": 0.004,
+        "2": 75.239,
+        "3": 0.0,
+        "4": 0.0,
+        "5": 75.265
+      },
+      "2": {
+        "1": 0.004,
+        "2": 0.004,
+        "3": 0.0
+      },
+      "3": {
+        "1": 64.717,
+        "2": 0.0,
+        "3": 64.676,
+        "4": 0.0
+      },
+      "4": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.0
+      },
+      "5": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.0
+      }
+    },
+    "switch_port_stats": {
+      "1": {
+        "1": {
+          "bps": 4391.667,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 980,
+          "elapsed_s": 1.785199,
+          "mbps": 0.004,
+          "util_pct": 0.0
+        },
+        "2": {
+          "bps": 75239399.92,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 16789662,
+          "elapsed_s": 1.785199,
+          "mbps": 75.239,
+          "util_pct": 7.524
+        },
+        "3": {
+          "bps": 0.0,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.785199,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "4": {
+          "bps": 0.0,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.785199,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "5": {
+          "bps": 75265032.918,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 16795382,
+          "elapsed_s": 1.785199,
+          "mbps": 75.265,
+          "util_pct": 7.527
+        }
+      },
+      "2": {
+        "1": {
+          "bps": 4328.419,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 980,
+          "elapsed_s": 1.811285,
+          "mbps": 0.004,
+          "util_pct": 0.0
+        },
+        "2": {
+          "bps": 4328.419,
+          "capacity_mbps": 100.0,
+          "congested": false,
+          "delta_bytes": 980,
+          "elapsed_s": 1.811285,
+          "mbps": 0.004,
+          "util_pct": 0.004
+        },
+        "3": {
+          "bps": 0.0,
+          "capacity_mbps": 100.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.811285,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        }
+      },
+      "3": {
+        "1": {
+          "bps": 64717462.844,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 16797034,
+          "elapsed_s": 2.076353,
+          "mbps": 64.717,
+          "util_pct": 6.472
+        },
+        "2": {
+          "bps": 0.0,
+          "capacity_mbps": 100.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 2.076353,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "3": {
+          "bps": 64676375.41,
+          "capacity_mbps": 100.0,
+          "congested": true,
+          "delta_bytes": 16786370,
+          "elapsed_s": 2.076353,
+          "mbps": 64.676,
+          "util_pct": 64.676
+        },
+        "4": {
+          "bps": 0.0,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 2.076353,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        }
+      },
+      "4": {
+        "1": {
+          "bps": 0.0,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.812824,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "2": {
+          "bps": 0.0,
+          "capacity_mbps": 100.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.812824,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "3": {
+          "bps": 0.0,
+          "capacity_mbps": 100.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.812824,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        }
+      },
+      "5": {
+        "1": {
+          "bps": 0.0,
+          "capacity_mbps": 1000.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.810493,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "2": {
+          "bps": 0.0,
+          "capacity_mbps": 50.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.810493,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        },
+        "3": {
+          "bps": 0.0,
+          "capacity_mbps": 50.0,
+          "congested": false,
+          "delta_bytes": 0,
+          "elapsed_s": 1.810493,
+          "mbps": 0.0,
+          "util_pct": 0.0
+        }
+      }
+    },
+    "switch_port_util_pct": {
+      "1": {
+        "1": 0.0,
+        "2": 7.524,
+        "3": 0.0,
+        "4": 0.0,
+        "5": 7.527
+      },
+      "2": {
+        "1": 0.0,
+        "2": 0.004,
+        "3": 0.0
+      },
+      "3": {
+        "1": 6.472,
+        "2": 0.0,
+        "3": 64.676,
+        "4": 0.0
+      },
+      "4": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.0
+      },
+      "5": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.0
+      }
+    },
+    "ts": 1775339293.2963202
+  },
+  "derived_metrics": {
+    "congestion_loss_pct": 0.0,
+    "congestion_packet_delivery_pct": 100.0,
+    "congestion_rtt_avg_ms": 18.329,
+    "reroute_evidence_packets": 0,
+    "reroute_observed": false,
+    "throughput_delta_mbps": -93.811,
+    "throughput_delta_pct": -100.0
+  },
+  "notes": [
+    "backup_icmp_packets > 0 is evidence that reroute path carried ICMP.",
+    "policy_activated_count > 0 indicates adaptive policy engaged.",
+    "congestion_response_s is measured from first port_congestion_on to policy_activated."
+  ],
+  "policy_events": {
+    "activated_count": 8,
+    "congestion_response_s": null,
+    "deactivated_count": 7,
+    "first_activated_ts": 1775337399.5225637,
+    "first_congestion_ts": 1775337419.6496813,
+    "first_deactivated_ts": 1775337403.5325212
+  },
+  "tag": "stage11_20260404_231635_static",
+  "ts": "2026-04-04T21:48:15.050637+00:00"
+}

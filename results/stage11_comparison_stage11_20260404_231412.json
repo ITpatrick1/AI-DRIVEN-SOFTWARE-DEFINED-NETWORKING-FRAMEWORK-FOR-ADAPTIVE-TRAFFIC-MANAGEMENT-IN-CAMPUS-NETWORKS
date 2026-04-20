@@ -1,0 +1,67 @@
+{
+  "after_adaptive": {
+    "congestion_response_s": null,
+    "latency_avg_ms": 6.567,
+    "mode": "after_adaptive",
+    "packet_delivery_pct": 100.0,
+    "packet_loss_pct": 0.0,
+    "policy_activated_count": 5,
+    "reroute_packets": 0,
+    "throughput_mbps": 0.0
+  },
+  "before_adaptive": {
+    "congestion_response_s": null,
+    "latency_avg_ms": 6.695,
+    "mode": "before_adaptive",
+    "packet_delivery_pct": 100.0,
+    "packet_loss_pct": 0.0,
+    "policy_activated_count": 7,
+    "reroute_packets": 0,
+    "throughput_mbps": 0.0
+  },
+  "evidence_paths": {
+    "after_json": "/home/patrick/mininet/results/adaptive_eval_stage11_20260404_231412_adaptive.json",
+    "before_json": "/home/patrick/mininet/results/adaptive_eval_stage11_20260404_231412_static.json"
+  },
+  "improvements": {
+    "congestion_response_delta_s": null,
+    "latency_delta_ms": -0.128,
+    "packet_delivery_delta_pct": 0.0,
+    "packet_loss_delta_pct": 0.0,
+    "reroute_packet_delta": 0,
+    "throughput_delta_mbps": 0.0
+  },
+  "notes": [
+    "before_adaptive uses very high thresholds so adaptive reroute should remain inactive.",
+    "after_adaptive uses low thresholds so adaptive reroute should activate under congestion.",
+    "reroute_packets > 0 indicates traffic observed on backup server interface."
+  ],
+  "source_derived_metrics": {
+    "after": {
+      "congestion_loss_pct": 0.0,
+      "congestion_packet_delivery_pct": 100.0,
+      "congestion_rtt_avg_ms": 6.567,
+      "reroute_evidence_packets": 0,
+      "reroute_observed": false,
+      "throughput_delta_mbps": -93.707,
+      "throughput_delta_pct": -100.0
+    },
+    "before": {
+      "congestion_loss_pct": 0.0,
+      "congestion_packet_delivery_pct": 100.0,
+      "congestion_rtt_avg_ms": 6.695,
+      "reroute_evidence_packets": 0,
+      "reroute_observed": false,
+      "throughput_delta_mbps": -93.96,
+      "throughput_delta_pct": -100.0
+    }
+  },
+  "tag": "stage11_20260404_231412",
+  "test_matrix": {
+    "congestion_test": "multi-host iperf3 stress in both runs",
+    "iperf3": "baseline + congestion probe in both runs",
+    "latency_test": "ICMP RTT probe in both runs",
+    "pingall": "executed during topology startup in both runs"
+  },
+  "ts": "2026-04-04T21:15:38.725935+00:00"
+}

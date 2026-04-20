@@ -1,0 +1,52 @@
+{
+  "baseline": {
+    "loss_pct": 0.0,
+    "rtt_avg_ms": 9.888,
+    "rtt_max_ms": 19.962,
+    "rtt_mdev_ms": 4.376,
+    "rtt_min_ms": 6.479,
+    "rx": 8,
+    "scenario": "baseline",
+    "throughput_mbps": 93.8610857621789,
+    "tx": 8
+  },
+  "congestion": {
+    "backup_icmp_packets": 12,
+    "loss_pct": 0.0,
+    "rtt_avg_ms": 10.049,
+    "rtt_max_ms": 24.669,
+    "rtt_mdev_ms": 5.144,
+    "rtt_min_ms": 6.588,
+    "rx": 10,
+    "scenario": "congestion",
+    "throughput_mbps": 0.0,
+    "tx": 10
+  },
+  "controller_metrics": {
+    "congest_high_mbps": 56.0,
+    "congest_low_mbps": 28.0,
+    "connected_switches": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ],
+    "core_primary_mbps": 96.1267245567098,
+    "events_file": "/tmp/campus_policy_events.jsonl",
+    "metrics_file": "/tmp/campus_metrics.json",
+    "ml_action_file": "/tmp/campus_ml_action.json",
+    "reroute_active": true,
+    "ts": 1774040881.7381773
+  },
+  "notes": [
+    "backup_icmp_packets > 0 is evidence that reroute path carried ICMP.",
+    "policy_activated_count > 0 indicates adaptive policy engaged."
+  ],
+  "policy_events": {
+    "activated_count": 6,
+    "deactivated_count": 5
+  },
+  "tag": "20260320_230709",
+  "ts": "2026-03-20T21:08:02.068473+00:00"
+}
