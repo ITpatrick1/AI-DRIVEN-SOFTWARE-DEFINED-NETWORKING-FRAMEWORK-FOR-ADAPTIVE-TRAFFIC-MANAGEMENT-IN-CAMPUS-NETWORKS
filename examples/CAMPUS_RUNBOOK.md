@@ -1,7 +1,109 @@
 # Campus SDN Operations Runbook
 
-Date: 2026-03-21  
-Scope: Mininet + Ryu + Adaptive QoS + Web Network Manager
+Date: 2026-05-10  
+Student: Patrick Manishimwe  
+Scope: SDN Architecture for Adaptive Traffic Management — full implementation  
+Reference: SDN_Capstone_Project_Guide_Patrick_full.pdf
+
+---
+
+## Quick Start (PDF Guide — Chapter 5-9 Commands)
+
+### Step 1 — Activate the virtual environment
+```bash
+source ~/sdn-env/bin/activate
+```
+
+### Step 2 — Start Ryu controller (Terminal 1)
+```bash
+cd ~/Desktop/campus-sdn
+ryu-manager examples/campus_controller.py ryu.app.ofctl_rest --wsapi-port 8081 --verbose
+# Wait for: "Connected from address 127.0.0.1" for each switch
+```
+
+### Step 3 — Start Mininet topology (Terminal 2, new window)
+```bash
+cd ~/Desktop/campus-sdn
+sudo -E python3 examples/campus_topology.py
+# Wait for: mininet> prompt
+# Verify connectivity:  mininet> pingall
+```
+
+### Step 4 — Start Flask dashboard (Terminal 3)
+```bash
+cd ~/Desktop/campus-sdn
+source ~/sdn-env/bin/activate
+python3 examples/campus_dashboard.py --host 0.0.0.0 --port 8080 \
+  --metrics-file /tmp/campus_metrics.json
+# Open browser: http://localhost:8080
+```
+
+### Step 5 — Start DQN routing agent (Terminal 4, optional)
+```bash
+cd ~/Desktop/campus-sdn
+source ~/sdn-env/bin/activate
+python3 examples/dqn_routing_agent.py \
+  --metrics-file /tmp/campus_metrics.json \
+  --action-file /tmp/campus_ml_action.json
+```
+
+### Step 6 — Start traffic monitor (Terminal 5, optional)
+```bash
+cd ~/Desktop/campus-sdn
+source ~/sdn-env/bin/activate
+python3 examples/traffic_monitor.py --host 0.0.0.0 --port 8090 \
+  --ryu-base http://127.0.0.1:8081
+# Open browser: http://localhost:8090
+```
+
+### OR — One-command full stack launch
+```bash
+cd ~/Desktop/campus-sdn
+examples/run_full_stack.sh                    # interactive (opens mininet> CLI)
+# OR
+examples/run_full_stack.sh --ml-mode dqn      # with real DQN agent
+# OR
+CAMPUS_DASHBOARD_HOST=0.0.0.0 examples/start_campus.sh  # background, LAN-accessible
+```
+
+### Stop everything
+```bash
+cd ~/Desktop/campus-sdn
+examples/stop_web_only_stack.sh
+# OR press Ctrl-C in run_full_stack.sh terminal
+```
+
+---
+
+## Campus Network Topology (Chapter 5)
+
+| Zone | Switch | Subnet | Hosts | Link to Core | Host Links |
+|------|--------|--------|-------|-------------|------------|
+| Server Farm | s1 (core) | 10.0.0.0/24 | h_server (10.0.0.100), h_server_b (10.0.0.101) | — | 1 Gbps, 1ms |
+| IT Lab | s2 | 10.0.0.0/24 | h_it1 (10.0.0.11), h_it2 (10.0.0.12) | 1 Gbps, 1ms | 100 Mbps, 1ms |
+| Networking Lab | s3 | 10.0.0.0/24 | h_net1 (10.0.0.21), h_net2 (10.0.0.22) | 1 Gbps, 1ms | 100 Mbps, 1ms |
+| Staff LAN | s4 | 10.0.0.0/24 | h_staff1 (10.0.0.31), h_staff2 (10.0.0.32) | 1 Gbps, 1ms | 100 Mbps, 1ms |
+| Student Wi-Fi | s5 | 10.0.0.0/24 | h_wifi1 (10.0.0.41), h_wifi2 (10.0.0.42) | 1 Gbps, 2ms | 50 Mbps, 5ms |
+
+Controller: Ryu on 127.0.0.1:6633 | OpenFlow 1.3
+
+---
+
+## Performance Targets (Chapter 11 Test Plan)
+
+| Test | Command | Expected |
+|------|---------|----------|
+| Full connectivity | `pingall` | 0% loss |
+| IT Lab bandwidth | `iperf h_it1 h_server` | >90 Mbps |
+| Wi-Fi bandwidth | `iperf h_wifi1 h_server` | >45 Mbps |
+| Wired latency | `h_it1 ping -c 10 h_server` | <5 ms RTT |
+| Wi-Fi latency | `h_wifi1 ping -c 10 h_server` | <15 ms RTT |
+| Flow rules | `sh ovs-ofctl -O OpenFlow13 dump-flows s1` | Rules present |
+| Congestion detection | Multi-stream iperf | Controller logs warning |
+| DQN rerouting | Run dqn_routing_agent.py | Rerouted in <30s |
+| Dashboard live | Open localhost:8080 | Live metrics visible |
+
+---
 
 ## 1. Offline Preparation (Do This While Online)
 Create an offline bundle with all runtime packages and Python artifacts:
@@ -47,6 +149,19 @@ Expected readiness markers:
 
 Dashboard URL:
 - `http://127.0.0.1:8080`
+
+To open the dashboard from the physical host while it runs inside the VM:
+
+```bash
+cd ~/mininet
+CAMPUS_DASHBOARD_HOST=0.0.0.0 examples/run_web_only_stack.sh
+```
+
+Then browse to `http://<vm-ip>:8080` from the host PC. You can find the VM IP with:
+
+```bash
+ip -br addr
+```
 
 ## 3. Real Dashboard Operations
 From the web UI, all actions are live against the active Mininet topology:
@@ -210,7 +325,7 @@ Outputs:
 - `results/stage11_comparison_<tag>.md`
 
 ## 12. API Reference
-Dashboard API (`127.0.0.1:8080`):
+Dashboard API (`127.0.0.1:8080` by default, or `http://<vm-ip>:8080` if launched with `CAMPUS_DASHBOARD_HOST=0.0.0.0`):
 - `GET /api/metrics`
 - `GET /api/events`
 - `GET /api/topology`

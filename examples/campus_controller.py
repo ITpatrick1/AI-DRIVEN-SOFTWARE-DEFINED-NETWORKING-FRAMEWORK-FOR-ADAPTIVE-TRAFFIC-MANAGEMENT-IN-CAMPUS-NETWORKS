@@ -16,6 +16,7 @@ import os
 import time
 import json
 import re
+from collections import deque
 
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -30,6 +31,8 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet
+from ryu.lib.packet import tcp
+from ryu.lib.packet import udp
 from ryu.ofproto import ofproto_v1_3
 
 
@@ -39,57 +42,133 @@ class CampusController(app_manager.RyuApp):
     POLICY_COOKIE = 0xCAFE0001
     POLICY_ENGINE_COOKIE = 0xCAFE1001
     VLAN_AUTOMATION_COOKIE = 0xCAFE3001
+    SECURITY_COOKIE = 0xCAFE5001
+    DDOS_COOKIE = 0xCAFE7001
 
-    # Service IPs for adaptive reroute policy.
-    PRIMARY_SERVER_IP = "10.0.0.100"
-    BACKUP_SERVER_IP = "10.0.0.101"
-    BACKUP_SERVER_MAC = "00:00:00:00:00:65"
-    IT_CLIENT_IPS = ("10.0.0.11", "10.0.0.12")
+    # DDoS detection parameters — data-plane (port-statistics based)
+    DDOS_PPS_THRESHOLD = 500      # packets/sec on a host-facing port to trigger detection
+    DDOS_DROP_PRIORITY = 400      # higher than SECURITY_COOKIE flows (360)
+    DDOS_DROP_HARD_TIMEOUT_S = 30 # auto-expire the drop rule after this many seconds
 
-    # DPID/port constants for campus_topology.py link order.
-    CORE_DPID = 1
-    IT_DPID = 2
-    NET_DPID = 3
-    WIFI_DPID = 5
-    CORE_TO_NET_PORT = 2        # s1 -> s3
-    CORE_TO_WIFI_PORT = 4       # s1 -> s5
-    CORE_TO_PRIMARY_PORT = 5    # s1 -> h_server
-    IT_TO_CORE_PORT = 1         # s2 -> s1
-    NET_TO_CORE_PORT = 1        # s3 -> s1
-    NET_TO_BACKUP_PORT = 4      # s3 -> h_server_b
-    WIFI_TO_CORE_PORT = 1       # s5 -> s1
+    # DDoS detection parameters — control-plane (packet-in rate based, real-time)
+    CTRL_FLOOD_WINDOW_S = 0.5      # sliding window for packet-in rate (seconds)
+    CTRL_FLOOD_THRESHOLD = 150     # packet-in events/sec per switch to flag ctrl-plane flood
+    CTRL_FLOOD_DROP_PRIORITY = 401 # highest priority — must beat data-plane rules
+    CTRL_FLOOD_HARD_TIMEOUT_S = 30 # auto-expire ctrl-plane mitigation rule
+
+    # Service IPs for adaptive reroute policy (real college servers).
+    PRIMARY_SERVER_IP = "10.0.1.10"   # h_server1 — SA Server 2 (on s2)
+    BACKUP_SERVER_IP  = "10.0.1.11"   # h_server2 — Server 1    (on s3)
+    BACKUP_SERVER_MAC = "00:00:00:00:00:0b"
+
+    # Zone IP lists — real college topology
+    ZONE_STUDENT_LAB = (
+        "10.1.2.1", "10.1.2.2", "10.1.2.3",    # lab2
+        "10.1.3.1", "10.1.3.2", "10.1.3.3",    # lab3
+        "10.1.4.1", "10.1.4.2", "10.1.4.3",    # lab4
+        "10.1.6.1", "10.1.6.2", "10.1.6.3",    # lab6
+        "10.1.7.1", "10.1.7.2", "10.1.7.3",    # lab7
+        "10.1.10.1","10.1.10.2","10.1.10.3",   # mechl1
+        "10.1.11.1","10.1.11.2","10.1.11.3",   # mechl2
+        "10.1.12.1","10.1.12.2","10.1.12.3",   # mechatronic
+    )
+    ZONE_SERVER     = ("10.0.1.10", "10.0.1.11")
+    ZONE_ADMIN      = ("10.4.1.1", "10.4.1.2", "10.4.1.3")
+    ZONE_ACADEMIC   = ("10.3.1.1", "10.3.1.2", "10.3.1.3")
+    ZONE_INCUBATION = ("10.2.1.1", "10.2.1.2", "10.2.1.3")
+
+    # Aliases for legacy code paths
+    IT_CLIENT_IPS = ZONE_STUDENT_LAB
+
+    # DPID/port constants — new 14-switch topology.
+    # s1=core, s2=dist_left, s3=dist_right
+    # Link order in create_campus_net():
+    #   s1-eth1: s1↔s2   s1-eth2: s1↔s3
+    #   s1-eth3: s1↔s7   s1-eth4: s1↔s8   s1-eth5: s1↔s12  s1-eth6: s1↔s14
+    #   s2-eth1: s2↔s1   s2-eth2: s2↔s4   s2-eth3: s2↔s5
+    #   s2-eth4: s2↔s6   s2-eth5: s2↔s9   s2-eth6: s2↔s10
+    #   s2-eth7: s2↔h_server1
+    #   s3-eth1: s3↔s1   s3-eth2: s3↔s11  s3-eth3: s3↔s13
+    #   s3-eth4: s3↔h_server2
+    CORE_DPID        = 1
+    DIST_LEFT_DPID   = 2    # s2
+    DIST_RIGHT_DPID  = 3    # s3
+    CORE_TO_LEFT_PORT  = 1  # s1 -> s2
+    CORE_TO_RIGHT_PORT = 2  # s1 -> s3
+
+    # Legacy aliases (used by policy engine / reroute logic)
+    IT_DPID  = DIST_LEFT_DPID
+    NET_DPID = DIST_RIGHT_DPID
+    WIFI_DPID = 5   # s5 lab6 switch (closest equivalent of old wifi switch)
+    CORE_TO_NET_PORT    = CORE_TO_RIGHT_PORT
+    CORE_TO_WIFI_PORT   = 3    # s1 -> s7 (mechl2)
+    CORE_TO_PRIMARY_PORT = 1   # s1 -> s2 (path to servers via dist_left)
+    IT_TO_CORE_PORT     = 1    # s2 -> s1
+    NET_TO_CORE_PORT    = 1    # s3 -> s1
+    NET_TO_BACKUP_PORT  = 4    # s3 -> h_server2
+    WIFI_TO_CORE_PORT   = 1    # s5 -> s2
+
+    # Port maps: IP → switch-port (used for DDoS per-IP detection on student ports).
+    # These are approximations; the learning-switch fills in the rest dynamically.
     IT_CLIENT_PORTS = {
-        "10.0.0.11": 2,  # h_it1
-        "10.0.0.12": 3,  # h_it2
+        "10.1.7.1": 2, "10.1.7.2": 3, "10.1.7.3": 4,     # lab7 on s4
+        "10.1.6.1": 2, "10.1.6.2": 3, "10.1.6.3": 4,     # lab6 on s5
+        "10.1.10.1": 2,"10.1.10.2": 3,"10.1.10.3": 4,    # mechl1 on s6
+        "10.1.12.1": 2,"10.1.12.2": 3,"10.1.12.3": 4,    # mechatronic on s9
+        "10.2.1.1": 2, "10.2.1.2": 3, "10.2.1.3": 4,     # incubation on s10
     }
     NET_CLIENT_PORTS = {
-        "10.0.0.21": 2,  # h_net1
-        "10.0.0.22": 3,  # h_net2
+        "10.1.3.1": 2, "10.1.3.2": 3, "10.1.3.3": 4,     # lab3 on s11
+        "10.1.11.1": 2,"10.1.11.2": 3,"10.1.11.3": 4,    # mechl2 on s7
+        "10.1.2.1": 2, "10.1.2.2": 3, "10.1.2.3": 4,     # lab2 on s8
     }
     STAFF_CLIENT_PORTS = {
-        "10.0.0.31": 2,  # h_staff1
-        "10.0.0.32": 3,  # h_staff2
+        "10.4.1.1": 2, "10.4.1.2": 3, "10.4.1.3": 4,     # admin on s14
     }
     WIFI_CLIENT_PORTS = {
-        "10.0.0.41": 2,  # h_wifi1
-        "10.0.0.42": 3,  # h_wifi2
+        "10.3.1.1": 2, "10.3.1.2": 3, "10.3.1.3": 4,     # academic on s13
+        "10.1.4.1": 2, "10.1.4.2": 3, "10.1.4.3": 4,     # lab4 on s12
     }
-    EXAM_TCP_PORT = 8443
-    AUTH_UDP_PORTS = (67, 68, 1812, 1813)
-    NORMAL_TCP_PORTS = (80, 443)
-    BULK_TCP_PORTS = (5201, 8080, 6881)
-    HIGH_PRIORITY_QUEUE_ID = 0
+    STAFF_CLIENT_IPS = tuple(ZONE_ADMIN)
+    LAB_CLIENT_IPS   = ZONE_STUDENT_LAB
+    SERVER_ZONE_IPS  = ZONE_SERVER
+
+    # Allowed TCP ports for student → server access (hosted platform only)
+    STUDENT_ALLOWED_SERVER_TCP_PORTS = (80, 443, 8080, 8443)
+
+    ACADEMIC_TCP_PORTS = (8443, 9443)
+    EXAM_TCP_PORT      = ACADEMIC_TCP_PORTS[0]
+    AUTH_UDP_PORTS     = (67, 68, 1812, 1813)
+    REALTIME_UDP_PORTS = (5204,)
+    NORMAL_TCP_PORTS   = (80, 443, 8008, 8088)
+    BULK_TCP_PORTS     = (5201, 5203, 6881)
+    HIGH_PRIORITY_QUEUE_ID   = 0
     MEDIUM_PRIORITY_QUEUE_ID = 1
-    LOW_PRIORITY_QUEUE_ID = 2
-    WIFI_CLIENT_IPS = tuple(WIFI_CLIENT_PORTS.keys())
+    LOW_PRIORITY_QUEUE_ID    = 2
+    WIFI_CLIENT_IPS  = tuple(ZONE_ACADEMIC) + tuple(
+        "10.1.4.%d" % i for i in range(1, 4)
+    )
     THROTTLE_QUEUE_ID = LOW_PRIORITY_QUEUE_ID
-    # Link capacities (Mbps), aligned with campus_topology.py
+
+    # Link capacities (Mbps), aligned with new 14-switch campus_topology.py
+    # s1: ports 1-6 (uplinks to s2,s3 @1Gbps; downlinks to s7,s8,s12,s14 @100Mbps)
+    # s2: ports 1-7 (uplink to s1 @1Gbps; downlinks to s4-s6,s9-s10 @100Mbps; h_server1 @100Mbps)
+    # s3: ports 1-4 (uplink to s1 @1Gbps; downlinks to s11,s13 @100Mbps; h_server2 @100Mbps)
     PORT_CAPACITY_MBPS = {
-        1: {1: 1000.0, 2: 1000.0, 3: 1000.0, 4: 1000.0, 5: 1000.0},
-        2: {1: 1000.0, 2: 100.0, 3: 100.0},
-        3: {1: 1000.0, 2: 100.0, 3: 100.0, 4: 1000.0},
-        4: {1: 1000.0, 2: 100.0, 3: 100.0},
-        5: {1: 1000.0, 2: 50.0, 3: 50.0},
+        1:  {1: 1000.0, 2: 1000.0, 3: 100.0, 4: 100.0, 5: 100.0, 6: 100.0},
+        2:  {1: 1000.0, 2: 100.0,  3: 100.0, 4: 100.0, 5: 100.0, 6: 100.0, 7: 100.0},
+        3:  {1: 1000.0, 2: 100.0,  3: 100.0, 4: 100.0},
+        4:  {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        5:  {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        6:  {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        7:  {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        8:  {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        9:  {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        10: {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        11: {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        12: {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        13: {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
+        14: {1: 100.0,  2: 100.0,  3: 100.0, 4: 100.0},
     }
 
     def __init__(self, *args, **kwargs):
@@ -130,7 +209,7 @@ class CampusController(app_manager.RyuApp):
         self.dqn_last_trigger_reason = None
 
         self.congest_high_mbps = float(
-            os.getenv("CAMPUS_CONGEST_HIGH_MBPS", "120")
+            os.getenv("CAMPUS_CONGEST_HIGH_MBPS", "150")
         )
         self.congest_low_mbps = float(os.getenv("CAMPUS_CONGEST_LOW_MBPS", "80"))
         if self.congest_low_mbps >= self.congest_high_mbps:
@@ -154,9 +233,41 @@ class CampusController(app_manager.RyuApp):
         self.manual_settings_file = os.getenv(
             "CAMPUS_MANUAL_SETTINGS_FILE", "/tmp/campus_manual_settings.json"
         )
+        self.security_policy_file = os.getenv(
+            "CAMPUS_SECURITY_POLICY_FILE", "/tmp/campus_security_policy.json"
+        )
         self.network_automation_file = os.getenv(
             "CAMPUS_NETWORK_AUTOMATION_FILE", "/tmp/campus_network_automation.json"
         )
+        # Timetable synchronisation (reads state written by timetable_engine.py)
+        self.timetable_state_file = os.getenv(
+            "CAMPUS_TIMETABLE_STATE", "/tmp/campus_timetable_state.json"
+        )
+        self.timetable_override_file = os.getenv(
+            "CAMPUS_TIMETABLE_OVERRIDE", "/tmp/campus_timetable_override.json"
+        )
+        self.timetable_db_file = os.getenv(
+            "CAMPUS_TIMETABLE_DB", "/tmp/campus_timetable.db"
+        )
+        self._timetable_state_mtime = 0.0
+        self.timetable_mode         = "normal"
+        self.timetable_label        = "Normal Operations"
+        self.timetable_icon         = "✅"
+        self.timetable_active       = False   # True when an override is in effect
+        self.timetable_exam_flag    = 0.0
+        self.timetable_slot         = {}
+        self.timetable_dqn_hint     = "normal_mode"
+
+        # Port-scan detection state
+        # {src_ip: deque of (dst_port, timestamp)} — track unique ports contacted
+        self.portscan_state     = {}   # {src_ip: {"ports": set, "ts_deque": deque, "alerted": bool}}
+        self.portscan_block_ips = {}   # {src_ip: blocked_until_ts}
+        self.PORTSCAN_PORT_LIMIT   = 30    # unique dst ports within window triggers detection
+        self.PORTSCAN_WINDOW_S     = 10.0  # seconds
+        self.PORTSCAN_BLOCK_S      = 300   # block duration
+        self.PORTSCAN_DROP_PRIORITY= 390   # below DDoS drop (400) but above security (360)
+        self.PORTSCAN_HARD_TIMEOUT = 300
+
         self.stats_log_interval_s = float(os.getenv("CAMPUS_STATS_LOG_INTERVAL_S", "2"))
         self.dqn_decision_timeout_s = float(
             os.getenv("CAMPUS_DQN_DECISION_TIMEOUT_S", "6")
@@ -164,8 +275,40 @@ class CampusController(app_manager.RyuApp):
         self.last_stats_log_ts = 0.0
         self._ml_action_mtime = 0.0
         self._network_automation_mtime = 0.0
+        self._security_policy_mtime = 0.0
         self.manual_settings_active = False
         self.network_automation_state = {"switches": {}}
+        self.security_policy = self._default_security_policy()
+        self.security_block_count = 0   # kept for backward compat
+        self.security_flows_attempted = 0
+        self.security_flows_blocked = 0
+        self.backup_path_packet_count = 0
+        self.security_last_event = {}
+        self.recent_security_block_src = {}
+        self.SECURITY_BLOCK_SUPPRESS_DDOS_S = 300.0
+        self.simulation_context_file = os.getenv(
+            "CAMPUS_SIM_CONTEXT_FILE", "/tmp/campus_simulation_context.json"
+        )
+        self._simulation_context_mtime = 0.0
+        self.simulation_probe_ips = set()
+
+        # DDoS attack detection and mitigation state — data plane
+        self.ddos_active = False
+        self.ddos_attacker_ips = {}    # {src_ip: timestamp when first detected}
+        self.ddos_blocked_flows = 0    # cumulative DROP rules installed
+        self.ddos_port_pps = {}        # {(dpid, port_no): packets/sec}
+        self.port_samples_pkts = {}    # {(dpid, port_no): (total_rx_pkts, timestamp)}
+
+        # DDoS attack detection — control plane (real-time, not waiting for stats poll)
+        self.ctrl_flood_active = False
+        self.ctrl_flood_switches = {}  # {dpid: timestamp when first detected}
+        self.ctrl_pkt_in_times = {}    # {dpid: deque of packet-in timestamps}
+        self.ctrl_pkt_in_rate = {}     # {dpid: current pkt-in/sec}
+
+        # Unified attack state (used by dashboard)
+        self.ddos_attack_type = None   # "data_plane", "ctrl_plane", "icmp_flood", None
+        self.ddos_detection_ts = 0.0   # when mitigation was installed (unix time)
+        self.ddos_attack_start_ts = 0.0  # set by topology via file signal
 
         self.monitor_thread = hub.spawn(self._monitor)
         self.logger.info(
@@ -241,10 +384,13 @@ class CampusController(app_manager.RyuApp):
             "switch_port_stats": port_stats_export,
             "priority_profiles": {
                 "exam_traffic": {
-                    "description": "Exam platform/app traffic",
+                    "description": "Academic services such as e-learning, exams, and college MIS",
                     "queue": self.HIGH_PRIORITY_QUEUE_ID,
                     "match": "tcp dst %s to %s"
-                    % (self.EXAM_TCP_PORT, self.PRIMARY_SERVER_IP),
+                    % (
+                        ",".join(str(x) for x in self.ACADEMIC_TCP_PORTS),
+                        self.PRIMARY_SERVER_IP,
+                    ),
                 },
                 "authentication_traffic": {
                     "description": "DHCP/RADIUS authentication traffic",
@@ -255,8 +401,17 @@ class CampusController(app_manager.RyuApp):
                         self.PRIMARY_SERVER_IP,
                     ),
                 },
+                "live_collaboration": {
+                    "description": "Real-time collaboration sessions such as Google Meet",
+                    "queue": self.HIGH_PRIORITY_QUEUE_ID,
+                    "match": "udp dst %s to %s"
+                    % (
+                        ",".join(str(x) for x in self.REALTIME_UDP_PORTS),
+                        self.PRIMARY_SERVER_IP,
+                    ),
+                },
                 "normal_browsing": {
-                    "description": "Normal web/application browsing",
+                    "description": "Normal web/application browsing and social media access",
                     "queue": self.MEDIUM_PRIORITY_QUEUE_ID,
                     "match": "tcp dst %s to %s"
                     % (
@@ -302,6 +457,22 @@ class CampusController(app_manager.RyuApp):
             "ml_action_file": self.ml_action_file,
             "manual_settings_file": self.manual_settings_file,
             "manual_settings_active": self.manual_settings_active,
+            "security_policy_file": self.security_policy_file,
+            "security_policy_enabled": bool(self.security_policy.get("enabled", False)),
+            "security_policy": self.security_policy,
+            "security_block_count": int(self.security_block_count),
+            "security_flows_attempted": int(self.security_flows_attempted),
+            "security_flows_blocked": int(self.security_flows_blocked),
+            "security_efficacy": {
+                "flows_attempted": int(self.security_flows_attempted),
+                "flows_blocked": int(self.security_flows_blocked),
+                "efficacy_pct": (
+                    round(self.security_flows_blocked / self.security_flows_attempted * 100.0, 2)
+                    if self.security_flows_attempted > 0 else None
+                ),
+            },
+            "backup_path_packet_count": int(self.backup_path_packet_count),
+            "security_last_event": self.security_last_event,
             "network_automation_file": self.network_automation_file,
             "network_automation": self.network_automation_state,
             "network_automation_summary": self._network_automation_summary(),
@@ -321,6 +492,35 @@ class CampusController(app_manager.RyuApp):
             "dqn_last_action_name": self.dqn_last_action_name,
             "dqn_last_trigger_reason": self.dqn_last_trigger_reason,
             "dqn_decision_timeout_s": self.dqn_decision_timeout_s,
+            "ddos_active": self.ddos_active or self.ctrl_flood_active,
+            "ddos_attacker_ips": list(self.ddos_attacker_ips.keys()),
+            "ddos_blocked_flows": int(self.ddos_blocked_flows),
+            "ddos_pps_threshold": self.DDOS_PPS_THRESHOLD,
+            "ddos_port_pps": {
+                "%d:%d" % (dpid, port): round(float(pps), 1)
+                for (dpid, port), pps in self.ddos_port_pps.items()
+            },
+            "ctrl_flood_active": self.ctrl_flood_active,
+            "ctrl_flood_switches": list(self.ctrl_flood_switches.keys()),
+            "ctrl_pkt_in_rate": {
+                str(dpid): round(float(rate), 1)
+                for dpid, rate in self.ctrl_pkt_in_rate.items()
+            },
+            "ctrl_flood_threshold": self.CTRL_FLOOD_THRESHOLD,
+            "ddos_attack_type": self.ddos_attack_type,
+            "ddos_detection_ts": self.ddos_detection_ts,
+            "ddos_attack_start_ts": self.ddos_attack_start_ts,
+            # Timetable synchronisation
+            "timetable_mode":     self.timetable_mode,
+            "timetable_label":    self.timetable_label,
+            "timetable_icon":     self.timetable_icon,
+            "timetable_active":   self.timetable_active,
+            "timetable_exam_flag":self.timetable_exam_flag,
+            "timetable_slot":     self.timetable_slot,
+            "timetable_dqn_hint": self.timetable_dqn_hint,
+            # Port-scan detection
+            "portscan_blocked_ips": list(self.portscan_block_ips.keys()),
+            "portscan_block_count": len(self.portscan_block_ips),
         }
         tmp = self.metrics_file + ".tmp"
         try:
@@ -714,6 +914,548 @@ class CampusController(app_manager.RyuApp):
             )
         return updated
 
+    def _default_security_policy(self):
+        return {
+            "enabled": True,
+            "source": "controller_default",
+            # Admin IPs (= staff) are protected from student access
+            "protected_staff_ips": list(self.ZONE_ADMIN),
+            # Servers that students may only access on allowed ports
+            "protected_server_ips": list(self.ZONE_SERVER),
+            # Zones whose traffic is subject to server-access port restrictions
+            "restricted_source_zones": ["student_lab", "incubation"],
+            # Explicit DROP pairs: student → admin, student → academic, student → incubation
+            "block_zone_pairs": [
+                {"src_zone": "student_lab", "dst_zone": "admin_zone",    "reason": "student_isolation"},
+                {"src_zone": "student_lab", "dst_zone": "academic_zone", "reason": "student_isolation"},
+                {"src_zone": "student_lab", "dst_zone": "incubation",    "reason": "student_isolation"},
+            ],
+            "allow_icmp_to_servers": True,
+            # Students may reach servers only on hosted-platform ports
+            "allowed_server_tcp_ports": list(self.STUDENT_ALLOWED_SERVER_TCP_PORTS) + [
+                8008, 8088, 9443, 5201, 5202, 5203, 5204
+            ],
+            "allowed_server_udp_ports": list(self.AUTH_UDP_PORTS) + list(self.REALTIME_UDP_PORTS),
+            "drop_priority": 360,
+            "drop_idle_timeout_s": 120,
+            "drop_hard_timeout_s": 300,
+        }
+
+    @staticmethod
+    def _normalize_ip_list(values):
+        out = []
+        seen = set()
+        for value in values if isinstance(values, list) else []:
+            ip_text = str(value or "").strip()
+            if not re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", ip_text):
+                continue
+            if ip_text in seen:
+                continue
+            seen.add(ip_text)
+            out.append(ip_text)
+        return out
+
+    def _normalize_security_policy(self, payload):
+        policy = self._default_security_policy()
+        if not isinstance(payload, dict):
+            return policy
+
+        policy["enabled"] = bool(payload.get("enabled", False))
+        policy["source"] = str(payload.get("source", "external")).strip() or "external"
+        policy["protected_staff_ips"] = self._normalize_ip_list(
+            payload.get("protected_staff_ips", list(self.STAFF_CLIENT_IPS))
+        ) or list(self.STAFF_CLIENT_IPS)
+        policy["protected_server_ips"] = self._normalize_ip_list(
+            payload.get("protected_server_ips", list(self.SERVER_ZONE_IPS))
+        ) or list(self.SERVER_ZONE_IPS)
+
+        valid_zones = {
+            "student_lab",
+            "admin_zone",
+            "academic_zone",
+            "incubation",
+            "server_zone",
+            "backup_service",
+            # Legacy aliases accepted from external policy files
+            "student_wifi",
+            "staff_lan",
+            "it_lab",
+            "network_lab",
+        }
+        restricted = []
+        for zone in payload.get(
+            "restricted_source_zones", policy["restricted_source_zones"]
+        ):
+            zone_text = str(zone or "").strip().lower()
+            if zone_text in valid_zones and zone_text not in restricted:
+                restricted.append(zone_text)
+        policy["restricted_source_zones"] = restricted or list(
+            self._default_security_policy()["restricted_source_zones"]
+        )
+
+        block_pairs = []
+        seen_pairs = set()
+        for item in payload.get("block_zone_pairs", []):
+            if not isinstance(item, dict):
+                continue
+            src_zone = str(item.get("src_zone", "")).strip().lower()
+            dst_zone = str(item.get("dst_zone", "")).strip().lower()
+            if src_zone not in valid_zones or dst_zone not in valid_zones:
+                continue
+            pair = (src_zone, dst_zone)
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+            block_pairs.append(
+                {
+                    "src_zone": src_zone,
+                    "dst_zone": dst_zone,
+                    "reason": str(item.get("reason", "")).strip(),
+                }
+            )
+        policy["block_zone_pairs"] = block_pairs
+
+        default_policy = self._default_security_policy()
+        for key, default_values in (
+            ("allowed_server_tcp_ports", policy["allowed_server_tcp_ports"]),
+            ("allowed_server_udp_ports", policy["allowed_server_udp_ports"]),
+        ):
+            ports = []
+            seen = set()
+            for raw in payload.get(key, default_values):
+                try:
+                    port = int(raw)
+                except Exception:
+                    continue
+                if port <= 0 or port > 65535 or port in seen:
+                    continue
+                ports.append(port)
+                seen.add(port)
+            merged = list(default_policy.get(key, []))
+            for port in ports:
+                if port not in merged:
+                    merged.append(port)
+            policy[key] = merged or list(default_values)
+
+        policy["allow_icmp_to_servers"] = bool(
+            payload.get("allow_icmp_to_servers", True)
+        )
+        try:
+            policy["drop_priority"] = max(
+                300, min(390, int(payload.get("drop_priority", 360)))
+            )
+        except Exception:
+            policy["drop_priority"] = 360
+        try:
+            policy["drop_idle_timeout_s"] = max(
+                10, min(900, int(payload.get("drop_idle_timeout_s", 120)))
+            )
+        except Exception:
+            policy["drop_idle_timeout_s"] = 120
+        try:
+            policy["drop_hard_timeout_s"] = max(
+                int(policy["drop_idle_timeout_s"]),
+                min(1800, int(payload.get("drop_hard_timeout_s", 300))),
+            )
+        except Exception:
+            policy["drop_hard_timeout_s"] = 300
+        return policy
+
+    def _load_security_policy_hook(self):
+        if not os.path.exists(self.security_policy_file):
+            if self.security_policy.get("enabled", False):
+                self.security_policy = self._default_security_policy()
+                self._security_policy_mtime = 0.0
+                self.logger.info("Security policy cleared")
+                self._append_event("security_policy_cleared")
+                self._write_metrics()
+            return
+
+        try:
+            mtime = os.path.getmtime(self.security_policy_file)
+            if mtime <= self._security_policy_mtime:
+                return
+            self._security_policy_mtime = mtime
+            with open(self.security_policy_file, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except Exception:
+            self.logger.exception("Failed reading security policy file")
+            return
+
+        normalized = self._normalize_security_policy(payload)
+        self.security_policy = normalized
+        self.logger.info(
+            "Security policy updated: enabled=%s block_pairs=%s restricted_zones=%s",
+            normalized.get("enabled", False),
+            len(normalized.get("block_zone_pairs", [])),
+            ",".join(normalized.get("restricted_source_zones", [])) or "-",
+        )
+        self._append_event(
+            "security_policy_updated",
+            enabled=bool(normalized.get("enabled", False)),
+            block_pairs=len(normalized.get("block_zone_pairs", [])),
+            restricted_zones=normalized.get("restricted_source_zones", []),
+        )
+        self._write_metrics()
+
+    def _load_simulation_context_hook(self):
+        if not os.path.exists(self.simulation_context_file):
+            self._simulation_context_mtime = 0.0
+            self.simulation_probe_ips = set()
+            return
+        try:
+            mtime = os.path.getmtime(self.simulation_context_file)
+            if mtime <= self._simulation_context_mtime:
+                return
+            self._simulation_context_mtime = mtime
+            with open(self.simulation_context_file, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except Exception:
+            self.logger.exception("Failed reading simulation context file")
+            return
+        sessions = payload.get("active_sessions", []) if isinstance(payload, dict) else []
+        probe_ips = set()
+        for session in sessions if isinstance(sessions, list) else []:
+            if not isinstance(session, dict):
+                continue
+            if str(session.get("traffic_class", "")).strip() != "security_probe":
+                continue
+            ip_text = str(session.get("ip", "")).strip()
+            if re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", ip_text):
+                probe_ips.add(ip_text)
+        self.simulation_probe_ips = probe_ips
+
+    def _ip_zone(self, ip_addr):
+        if ip_addr in self.ZONE_STUDENT_LAB:
+            return "student_lab"
+        if ip_addr in self.ZONE_ADMIN:
+            return "admin_zone"
+        if ip_addr in self.ZONE_ACADEMIC:
+            return "academic_zone"
+        if ip_addr in self.ZONE_INCUBATION:
+            return "incubation"
+        if ip_addr == self.PRIMARY_SERVER_IP:
+            return "server_zone"
+        if ip_addr == self.BACKUP_SERVER_IP:
+            return "backup_service"
+        # Legacy aliases for backward compatibility with old policy files
+        if ip_addr in self.IT_CLIENT_PORTS:
+            return "student_lab"
+        if ip_addr in self.NET_CLIENT_PORTS:
+            return "student_lab"
+        if ip_addr in self.STAFF_CLIENT_PORTS:
+            return "admin_zone"
+        if ip_addr in self.WIFI_CLIENT_PORTS:
+            return "academic_zone"
+        return "unknown"
+
+    def _track_ctrl_pkt_in(self, datapath, dpid, in_port):
+        """Real-time control-plane flood detection via per-switch packet-in rate.
+
+        Called on every packet_in event — detects and mitigates in the same call,
+        achieving sub-100 ms response (no stats-polling round-trip needed).
+        """
+        now = time.time()
+        times = self.ctrl_pkt_in_times.setdefault(dpid, deque())
+        times.append(now)
+        cutoff = now - self.CTRL_FLOOD_WINDOW_S
+        while times and times[0] < cutoff:
+            times.popleft()
+        rate = len(times) / self.CTRL_FLOOD_WINDOW_S
+        self.ctrl_pkt_in_rate[dpid] = rate
+
+        if rate >= self.CTRL_FLOOD_THRESHOLD and dpid not in self.ctrl_flood_switches:
+            self._mitigate_ctrl_flood(datapath, dpid, in_port, rate)
+
+    def _mitigate_ctrl_flood(self, datapath, dpid, in_port, rate):
+        """Mitigate control-plane flood: drop all traffic on the flooding ingress port."""
+        if dpid in self.ctrl_flood_switches:
+            return
+        self.ctrl_flood_switches[dpid] = time.time()
+        self.ctrl_flood_active = True
+        self.ddos_active = True
+        self.ddos_attack_type = "ctrl_plane"
+        self.ddos_detection_ts = time.time()
+        self.ddos_blocked_flows += 1
+
+        parser = datapath.ofproto_parser
+        # Drop all traffic arriving on the flooding port (targeted, not a catch-all).
+        match = parser.OFPMatch(in_port=in_port)
+        self.add_flow(
+            datapath,
+            self.CTRL_FLOOD_DROP_PRIORITY,
+            match,
+            [],  # empty actions = DROP
+            cookie=self.DDOS_COOKIE,
+            hard_timeout=self.CTRL_FLOOD_HARD_TIMEOUT_S,
+        )
+        self.logger.warning(
+            "CTRL_PLANE_FLOOD dpid=%s in_port=%s pkt_in_rate=%.0f/s "
+            "-> port DROP rule installed (priority=%d hard_timeout=%ds)",
+            dpid, in_port, rate, self.CTRL_FLOOD_DROP_PRIORITY,
+            self.CTRL_FLOOD_HARD_TIMEOUT_S,
+        )
+        self._append_event(
+            "ctrl_flood_detected",
+            dpid=int(dpid),
+            in_port=int(in_port),
+            pkt_in_rate=round(float(rate), 1),
+            threshold=self.CTRL_FLOOD_THRESHOLD,
+            mitigation="port_drop_rule",
+        )
+        self._write_metrics()
+
+    def _cleanup_ctrl_flood(self):
+        """Remove expired ctrl-flood entries after hard-timeout."""
+        now = time.time()
+        expiry = self.CTRL_FLOOD_HARD_TIMEOUT_S + 2.0
+        expired = [
+            dpid for dpid, ts in list(self.ctrl_flood_switches.items())
+            if now - ts >= expiry
+        ]
+        for dpid in expired:
+            self.ctrl_flood_switches.pop(dpid, None)
+            self.ctrl_pkt_in_times.pop(dpid, None)
+            self.logger.info("CTRL_FLOOD_EXPIRED dpid=%s", dpid)
+            self._append_event("ctrl_flood_expired", dpid=int(dpid))
+        if expired:
+            self.ctrl_flood_active = bool(self.ctrl_flood_switches)
+            if not self.ctrl_flood_active and not self.ddos_active:
+                self.ddos_attack_type = None
+            self._write_metrics()
+
+    def _host_ip_for_port(self, dpid, port_no):
+        """Return the host IP connected to a specific switch port, if known.
+
+        Covers the access-layer switches in the real college topology.
+        DPID→switch mapping: 4=lab7, 5=lab6, 6=mechl1, 7=mechl2, 8=lab2,
+        9=mechatronic, 10=incubation, 11=lab3, 12=lab4, 13=academic, 14=admin.
+        """
+        port_maps = [
+            (4,  self.IT_CLIENT_PORTS),       # lab7
+            (5,  self.IT_CLIENT_PORTS),        # lab6
+            (6,  self.IT_CLIENT_PORTS),        # mechl1
+            (9,  self.IT_CLIENT_PORTS),        # mechatronic
+            (10, self.IT_CLIENT_PORTS),        # incubation
+            (7,  self.NET_CLIENT_PORTS),       # mechl2
+            (8,  self.NET_CLIENT_PORTS),       # lab2
+            (11, self.NET_CLIENT_PORTS),       # lab3
+            (14, self.STAFF_CLIENT_PORTS),     # admin
+            (13, self.WIFI_CLIENT_PORTS),      # academic
+            (12, self.WIFI_CLIENT_PORTS),      # lab4
+        ]
+        for sw_dpid, port_map in port_maps:
+            if dpid == sw_dpid:
+                for ip, p in port_map.items():
+                    if p == port_no:
+                        return ip
+        return None
+
+    def _check_port_ddos(self, dpid, port_no, pps, datapath):
+        """Detect DDoS flood based on ingress packet rate on a host-facing port."""
+        self.ddos_port_pps[(dpid, port_no)] = pps
+        if pps < self.DDOS_PPS_THRESHOLD:
+            return
+        src_ip = self._host_ip_for_port(dpid, port_no)
+        if not src_ip or src_ip in self.ddos_attacker_ips:
+            return
+        if src_ip in self.simulation_probe_ips:
+            return
+        blocked_ts = float(self.recent_security_block_src.get(src_ip, 0.0) or 0.0)
+        if blocked_ts:
+            if time.time() - blocked_ts < self.SECURITY_BLOCK_SUPPRESS_DDOS_S:
+                return
+            self.recent_security_block_src.pop(src_ip, None)
+        # Install DROP rule on all connected switches so the flood is stopped everywhere.
+        for dp in list(self.datapaths.values()):
+            self._install_ddos_drop(dp, src_ip, pps)
+
+    def _install_ddos_drop(self, datapath, src_ip, detected_pps=0.0):
+        """Install a high-priority DROP flow rule for the attacking source IP."""
+        if src_ip in self.ddos_attacker_ips:
+            return
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(
+            eth_type=ether_types.ETH_TYPE_IP,
+            ipv4_src=src_ip,
+        )
+        self.add_flow(
+            datapath,
+            self.DDOS_DROP_PRIORITY,
+            match,
+            [],  # empty action list = DROP
+            cookie=self.DDOS_COOKIE,
+            hard_timeout=self.DDOS_DROP_HARD_TIMEOUT_S,
+        )
+        self.ddos_attacker_ips[src_ip] = time.time()
+        self.ddos_blocked_flows += 1
+        self.ddos_active = True
+        self.ddos_detection_ts = time.time()
+        if self.ddos_attack_type is None:
+            self.ddos_attack_type = "data_plane"
+        self.logger.warning(
+            "DDOS_DETECTED src_ip=%s port_pps=%.0f threshold=%d "
+            "-> DROP rule installed (priority=%d hard_timeout=%ds)",
+            src_ip, detected_pps, self.DDOS_PPS_THRESHOLD,
+            self.DDOS_DROP_PRIORITY, self.DDOS_DROP_HARD_TIMEOUT_S,
+        )
+        self._append_event(
+            "ddos_detected",
+            src_ip=src_ip,
+            dpid=int(datapath.id),
+            detected_pps=round(float(detected_pps), 1),
+            threshold_pps=self.DDOS_PPS_THRESHOLD,
+        )
+        self._write_metrics()
+
+    def _cleanup_ddos_state(self):
+        """Remove attacker IPs whose DROP rule hard-timeout has expired."""
+        now = time.time()
+        expiry = self.DDOS_DROP_HARD_TIMEOUT_S + 2.0
+        expired = [
+            ip for ip, ts in list(self.ddos_attacker_ips.items())
+            if now - ts >= expiry
+        ]
+        for ip in expired:
+            self.ddos_attacker_ips.pop(ip, None)
+            self.logger.info("DDOS_MITIGATION_EXPIRED src_ip=%s", ip)
+            self._append_event("ddos_mitigation_expired", src_ip=ip)
+        if expired:
+            self.ddos_active = bool(self.ddos_attacker_ips)
+            if not self.ddos_active and not self.ctrl_flood_active:
+                self.ddos_attack_type = None
+            self._write_metrics()
+
+    def _drop_security_flow(self, datapath, msg, match, event):
+        ofproto = datapath.ofproto
+        buffer_id = msg.buffer_id
+        if buffer_id == ofproto.OFP_NO_BUFFER:
+            buffer_id = None
+        self.add_flow(
+            datapath,
+            int(self.security_policy.get("drop_priority", 360)),
+            match,
+            [],
+            buffer_id=buffer_id,
+            cookie=self.SECURITY_COOKIE,
+            idle_timeout=int(self.security_policy.get("drop_idle_timeout_s", 120)),
+            hard_timeout=int(self.security_policy.get("drop_hard_timeout_s", 300)),
+        )
+        self.security_block_count += 1
+        self.security_flows_blocked += 1
+        self.security_last_event = dict(event)
+        src_ip = str(event.get("src_ip", "") or "").strip()
+        if src_ip:
+            self.recent_security_block_src[src_ip] = time.time()
+        self.logger.warning(
+            "SECURITY_BLOCK reason=%s src=%s dst=%s src_zone=%s dst_zone=%s proto=%s port=%s",
+            event.get("reason"),
+            event.get("src_ip"),
+            event.get("dst_ip"),
+            event.get("src_zone"),
+            event.get("dst_zone"),
+            event.get("proto"),
+            event.get("dst_port"),
+        )
+        self._append_event("security_violation_blocked", **event)
+        self._write_metrics()
+        return True
+
+    def _enforce_security_policy(self, datapath, msg, in_port, pkt, ip_pkt):
+        if not ip_pkt or not bool(self.security_policy.get("enabled", False)):
+            return False
+
+        self.security_flows_attempted += 1
+        src_ip = str(ip_pkt.src)
+        dst_ip = str(ip_pkt.dst)
+        src_zone = self._ip_zone(src_ip)
+        dst_zone = self._ip_zone(dst_ip)
+        parser = datapath.ofproto_parser
+
+        for pair in self.security_policy.get("block_zone_pairs", []):
+            if src_zone != pair.get("src_zone") or dst_zone != pair.get("dst_zone"):
+                continue
+            match = parser.OFPMatch(
+                in_port=in_port,
+                eth_type=ether_types.ETH_TYPE_IP,
+                ipv4_src=src_ip,
+                ipv4_dst=dst_ip,
+            )
+            return self._drop_security_flow(
+                datapath,
+                msg,
+                match,
+                {
+                    "dpid": int(datapath.id),
+                    "in_port": int(in_port),
+                    "src_ip": src_ip,
+                    "dst_ip": dst_ip,
+                    "src_zone": src_zone,
+                    "dst_zone": dst_zone,
+                    "proto": "ip",
+                    "dst_port": None,
+                    "reason": pair.get("reason") or "blocked_zone_pair",
+                },
+            )
+
+        protected_servers = set(self.security_policy.get("protected_server_ips", []))
+        restricted_zones = set(self.security_policy.get("restricted_source_zones", []))
+        if src_zone not in restricted_zones or dst_ip not in protected_servers:
+            return False
+
+        if ip_pkt.proto == 1 and bool(
+            self.security_policy.get("allow_icmp_to_servers", True)
+        ):
+            return False
+
+        allowed_tcp = set(self.security_policy.get("allowed_server_tcp_ports", []))
+        allowed_udp = set(self.security_policy.get("allowed_server_udp_ports", []))
+        tcp_pkt = pkt.get_protocol(tcp.tcp)
+        udp_pkt = pkt.get_protocol(udp.udp)
+        if tcp_pkt is not None and int(tcp_pkt.dst_port) in allowed_tcp:
+            return False
+        if udp_pkt is not None and int(udp_pkt.dst_port) in allowed_udp:
+            return False
+
+        match_kwargs = {
+            "in_port": in_port,
+            "eth_type": ether_types.ETH_TYPE_IP,
+            "ipv4_src": src_ip,
+            "ipv4_dst": dst_ip,
+        }
+        proto_name = "ip"
+        dst_port = None
+        if tcp_pkt is not None:
+            match_kwargs["ip_proto"] = 6
+            match_kwargs["tcp_dst"] = int(tcp_pkt.dst_port)
+            proto_name = "tcp"
+            dst_port = int(tcp_pkt.dst_port)
+        elif udp_pkt is not None:
+            match_kwargs["ip_proto"] = 17
+            match_kwargs["udp_dst"] = int(udp_pkt.dst_port)
+            proto_name = "udp"
+            dst_port = int(udp_pkt.dst_port)
+        elif ip_pkt.proto is not None:
+            match_kwargs["ip_proto"] = int(ip_pkt.proto)
+            proto_name = str(int(ip_pkt.proto))
+
+        return self._drop_security_flow(
+            datapath,
+            msg,
+            parser.OFPMatch(**match_kwargs),
+            {
+                "dpid": int(datapath.id),
+                "in_port": int(in_port),
+                "src_ip": src_ip,
+                "dst_ip": dst_ip,
+                "src_zone": src_zone,
+                "dst_zone": dst_zone,
+                "proto": proto_name,
+                "dst_port": dst_port,
+                "reason": "unapproved_server_access",
+            },
+        )
+
     @staticmethod
     def _switch_name(dpid):
         return "s%s" % int(dpid)
@@ -922,14 +1664,22 @@ class CampusController(app_manager.RyuApp):
         datapath.send_msg(mod)
 
     def _policy_map_for_switch(self, dpid):
-        if dpid == self.IT_DPID:
+        # Distribution switches: install QoS policy rules that steer traffic to
+        # the primary server into the correct priority queue on the core uplink.
+        if dpid == self.DIST_LEFT_DPID:   # s2 — uplink to s1 is port 1
             return {"uplink": self.IT_TO_CORE_PORT, "clients": self.IT_CLIENT_PORTS}
-        if dpid == self.NET_DPID:
+        if dpid == self.DIST_RIGHT_DPID:  # s3 — uplink to s1 is port 1
             return {"uplink": self.NET_TO_CORE_PORT, "clients": self.NET_CLIENT_PORTS}
-        if dpid == 4:
+        # Access switches attached to dist_left (s2): uplink to s2 is port 1
+        if dpid in (4, 5, 6, 9, 10):
+            return {"uplink": 1, "clients": self.IT_CLIENT_PORTS}
+        # Access switches attached to dist_right (s3) or directly to core: uplink port 1
+        if dpid in (7, 8, 11, 12):
+            return {"uplink": 1, "clients": self.NET_CLIENT_PORTS}
+        if dpid == 13:  # academic — uplink port 1 to s3
+            return {"uplink": 1, "clients": self.WIFI_CLIENT_PORTS}
+        if dpid == 14:  # admin — uplink port 1 to s1 (highest priority)
             return {"uplink": 1, "clients": self.STAFF_CLIENT_PORTS}
-        if dpid == self.WIFI_DPID:
-            return {"uplink": self.WIFI_TO_CORE_PORT, "clients": self.WIFI_CLIENT_PORTS}
         return None
 
     def _install_policy_engine_flows(self, datapath):
@@ -957,19 +1707,31 @@ class CampusController(app_manager.RyuApp):
             return [parser.OFPActionSetQueue(queue_id), parser.OFPActionOutput(out_port)]
 
         # Client/source -> primary server policies (policy-based routing + priority).
-        push(
-            340,
-            parser.OFPMatch(
-                eth_type=ether_types.ETH_TYPE_IP,
-                ip_proto=6,
-                ipv4_dst=self.PRIMARY_SERVER_IP,
-                tcp_dst=self.EXAM_TCP_PORT,
-            ),
-            qout(self.HIGH_PRIORITY_QUEUE_ID, uplink),
-        )
+        for p in self.ACADEMIC_TCP_PORTS:
+            push(
+                340,
+                parser.OFPMatch(
+                    eth_type=ether_types.ETH_TYPE_IP,
+                    ip_proto=6,
+                    ipv4_dst=self.PRIMARY_SERVER_IP,
+                    tcp_dst=p,
+                ),
+                qout(self.HIGH_PRIORITY_QUEUE_ID, uplink),
+            )
         for p in self.AUTH_UDP_PORTS:
             push(
                 330,
+                parser.OFPMatch(
+                    eth_type=ether_types.ETH_TYPE_IP,
+                    ip_proto=17,
+                    ipv4_dst=self.PRIMARY_SERVER_IP,
+                    udp_dst=p,
+                ),
+                qout(self.HIGH_PRIORITY_QUEUE_ID, uplink),
+            )
+        for p in self.REALTIME_UDP_PORTS:
+            push(
+                335,
                 parser.OFPMatch(
                     eth_type=ether_types.ETH_TYPE_IP,
                     ip_proto=17,
@@ -1011,21 +1773,35 @@ class CampusController(app_manager.RyuApp):
 
         # Primary server -> known local clients.
         for client_ip, client_port in client_ports.items():
-            push(
-                340,
-                parser.OFPMatch(
-                    in_port=uplink,
-                    eth_type=ether_types.ETH_TYPE_IP,
-                    ip_proto=6,
-                    ipv4_src=self.PRIMARY_SERVER_IP,
-                    ipv4_dst=client_ip,
-                    tcp_src=self.EXAM_TCP_PORT,
-                ),
-                qout(self.HIGH_PRIORITY_QUEUE_ID, client_port),
-            )
+            for p in self.ACADEMIC_TCP_PORTS:
+                push(
+                    340,
+                    parser.OFPMatch(
+                        in_port=uplink,
+                        eth_type=ether_types.ETH_TYPE_IP,
+                        ip_proto=6,
+                        ipv4_src=self.PRIMARY_SERVER_IP,
+                        ipv4_dst=client_ip,
+                        tcp_src=p,
+                    ),
+                    qout(self.HIGH_PRIORITY_QUEUE_ID, client_port),
+                )
             for p in self.AUTH_UDP_PORTS:
                 push(
                     330,
+                    parser.OFPMatch(
+                        in_port=uplink,
+                        eth_type=ether_types.ETH_TYPE_IP,
+                        ip_proto=17,
+                        ipv4_src=self.PRIMARY_SERVER_IP,
+                        ipv4_dst=client_ip,
+                        udp_src=p,
+                    ),
+                    qout(self.HIGH_PRIORITY_QUEUE_ID, client_port),
+                )
+            for p in self.REALTIME_UDP_PORTS:
+                push(
+                    335,
                     parser.OFPMatch(
                         in_port=uplink,
                         eth_type=ether_types.ETH_TYPE_IP,
@@ -1085,7 +1861,9 @@ class CampusController(app_manager.RyuApp):
             rule_count=rule_count,
             uplink_port=uplink,
             exam_port=self.EXAM_TCP_PORT,
+            academic_ports=list(self.ACADEMIC_TCP_PORTS),
             auth_ports=list(self.AUTH_UDP_PORTS),
+            collaboration_ports=list(self.REALTIME_UDP_PORTS),
             normal_ports=list(self.NORMAL_TCP_PORTS),
             bulk_ports=list(self.BULK_TCP_PORTS),
         )
@@ -1321,17 +2099,182 @@ class CampusController(app_manager.RyuApp):
         self._append_event("switch_connected", dpid=datapath.id)
         self._write_metrics()
 
+    # ── Timetable synchronisation hook ──────────────────────────────────────────
+    _TIMETABLE_EFFECTS = {
+        "exam":        {"high": 20.0, "low": 10.0, "exam": 1.0, "hint": "exam_mode"},
+        "lecture":     {"high": 35.0, "low": 18.0, "exam": 0.0, "hint": "boost_lab_zone"},
+        "lab":         {"high": 50.0, "low": 25.0, "exam": 0.0, "hint": "boost_lab_zone"},
+        "admin":       {"high": 30.0, "low": 15.0, "exam": 0.0, "hint": "boost_staff_lan"},
+        "break":       {"high": 40.0, "low": 20.0, "exam": 0.0, "hint": "normal_mode"},
+        "after_hours": {"high": 60.0, "low": 30.0, "exam": 0.0, "hint": "normal_mode"},
+        "peak_hour":   {"high": 25.0, "low": 12.0, "exam": 0.0, "hint": "peak_hour_mode"},
+        "congestion":  {"high": 15.0, "low":  8.0, "exam": 0.0, "hint": "throttle_wifi_70pct"},
+        "ddos":        {"high": 20.0, "low": 10.0, "exam": 0.0, "hint": "security_isolation_wifi"},
+        "combined":    {"high": 18.0, "low":  9.0, "exam": 1.0, "hint": "emergency_staff_protection"},
+        "normal":      {"high": 40.0, "low": 20.0, "exam": 0.0, "hint": "normal_mode"},
+    }
+
+    def _apply_timetable_hook(self):
+        """Read /tmp/campus_timetable_state.json and adjust congestion thresholds."""
+        if not os.path.exists(self.timetable_state_file):
+            return
+        try:
+            mtime = os.path.getmtime(self.timetable_state_file)
+            if mtime <= self._timetable_state_mtime:
+                return
+            self._timetable_state_mtime = mtime
+            with open(self.timetable_state_file, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except Exception:
+            return
+
+        mode     = str(state.get("mode", "normal"))
+        label    = str(state.get("label", "Normal Operations"))
+        icon     = str(state.get("icon", ""))
+        is_ovr   = bool(state.get("is_override", False))
+        slot     = state.get("slot") or {}
+        dqn_hint = str(state.get("dqn_hint", "normal_mode"))
+
+        effects = self._TIMETABLE_EFFECTS.get(mode, self._TIMETABLE_EFFECTS["normal"])
+        old_mode = self.timetable_mode
+
+        self.timetable_mode      = mode
+        self.timetable_label     = label
+        self.timetable_icon      = icon
+        self.timetable_active    = is_ovr
+        self.timetable_exam_flag = effects["exam"]
+        self.timetable_slot      = slot
+        self.timetable_dqn_hint  = dqn_hint
+
+        if mode != old_mode:
+            # Apply threshold changes
+            self.congest_high_mbps = effects["high"]
+            self.congest_low_mbps  = effects["low"]
+            self.logger.info(
+                "Timetable: %s → %s | thresholds high=%.1f low=%.1f | hint=%s",
+                old_mode, mode, effects["high"], effects["low"], dqn_hint,
+            )
+            self._append_event(
+                "timetable_mode_change",
+                old_mode=old_mode,
+                new_mode=mode,
+                label=label,
+                congest_high=effects["high"],
+                congest_low=effects["low"],
+                exam_flag=effects["exam"],
+                is_override=is_ovr,
+            )
+            self._write_metrics()
+
+    # ── Port-scan detection ─────────────────────────────────────────────────────
+    def _check_port_scan(self, src_ip, dst_port, datapath):
+        """Track unique dst_port contacts per src_ip; fire detection if > LIMIT in window."""
+        if not src_ip:
+            return
+        now = time.time()
+
+        # Check if already blocked (suppress duplicate drops)
+        if src_ip in self.portscan_block_ips:
+            if now < self.portscan_block_ips[src_ip]:
+                return
+            del self.portscan_block_ips[src_ip]
+
+        if src_ip not in self.portscan_state:
+            self.portscan_state[src_ip] = {
+                "ports":    set(),
+                "ts_deque": deque(),
+                "alerted":  False,
+                "first_ts": now,
+            }
+        entry = self.portscan_state[src_ip]
+
+        # Prune old timestamps outside window
+        while entry["ts_deque"] and now - entry["ts_deque"][0] > self.PORTSCAN_WINDOW_S:
+            entry["ts_deque"].popleft()
+
+        entry["ts_deque"].append(now)
+        entry["ports"].add(dst_port)
+
+        unique_in_window = len(set(
+            port for port, ts in zip(
+                sorted(entry["ports"]),
+                list(entry["ts_deque"])
+            )
+        ))
+        # Simpler: count ports contacted since first_ts within window
+        unique_in_window = len(entry["ports"])
+
+        if unique_in_window >= self.PORTSCAN_PORT_LIMIT and not entry["alerted"]:
+            entry["alerted"] = True
+            self.portscan_block_ips[src_ip] = now + self.PORTSCAN_BLOCK_S
+            self._install_portscan_drop(datapath, src_ip)
+            self.logger.warning(
+                "Port scan detected: src=%s unique_ports=%d — DROP for %ds",
+                src_ip, unique_in_window, self.PORTSCAN_BLOCK_S,
+            )
+            self._append_event(
+                "portscan_detected",
+                src_ip=src_ip,
+                unique_ports=unique_in_window,
+                block_duration=self.PORTSCAN_BLOCK_S,
+            )
+            self._write_metrics()
+
+    def _install_portscan_drop(self, datapath, src_ip):
+        """Install DROP rule for port-scan source IP."""
+        parser = datapath.ofproto_parser
+        ofproto = datapath.ofproto
+        match = parser.OFPMatch(
+            eth_type=0x0800,  # IPv4
+            ipv4_src=src_ip,
+        )
+        self.add_flow(
+            datapath,
+            self.PORTSCAN_DROP_PRIORITY,
+            match,
+            [],  # empty actions = drop
+            cookie=self.DDOS_COOKIE,
+            hard_timeout=self.PORTSCAN_HARD_TIMEOUT,
+        )
+        # Install on ALL switches
+        for dp in list(self.datapaths.values()):
+            if dp.id != datapath.id:
+                m2 = dp.ofproto_parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
+                self.add_flow(
+                    dp, self.PORTSCAN_DROP_PRIORITY, m2, [],
+                    cookie=self.DDOS_COOKIE,
+                    hard_timeout=self.PORTSCAN_HARD_TIMEOUT,
+                )
+
+    def _cleanup_portscan_state(self):
+        """Remove expired port-scan tracking entries."""
+        now = time.time()
+        expired_ips = [
+            ip for ip, until in list(self.portscan_block_ips.items())
+            if now > until
+        ]
+        for ip in expired_ips:
+            self.portscan_block_ips.pop(ip, None)
+            self.portscan_state.pop(ip, None)
+            self._append_event("portscan_block_expired", src_ip=ip)
+
     def _monitor(self):
         while True:
             self._apply_ml_action_hook()
+            self._apply_timetable_hook()
+            self._load_security_policy_hook()
+            self._load_simulation_context_hook()
             self._apply_network_automation_hook()
             self._check_dqn_decision_timeout()
+            self._cleanup_ddos_state()
+            self._cleanup_ctrl_flood()
+            self._cleanup_portscan_state()
             for datapath in list(self.datapaths.values()):
                 parser = datapath.ofproto_parser
                 ofproto = datapath.ofproto
                 req = parser.OFPPortStatsRequest(datapath, 0, ofproto.OFPP_ANY)
                 datapath.send_msg(req)
-            hub.sleep(2)
+            hub.sleep(0.5)  # 0.5 s polling for fast data-plane detection
 
     @set_ev_cls(ofp_event.EventOFPPortStatsReply, MAIN_DISPATCHER)
     def port_stats_reply_handler(self, ev):
@@ -1339,6 +2282,7 @@ class CampusController(app_manager.RyuApp):
         dpid = datapath.id
         now = time.time()
         log_parts = []
+        self._load_simulation_context_hook()
 
         for stat in ev.msg.body:
             if stat.port_no == datapath.ofproto.OFPP_LOCAL:
@@ -1347,6 +2291,18 @@ class CampusController(app_manager.RyuApp):
             total_bytes = stat.rx_bytes + stat.tx_bytes
             prev = self.port_samples.get(key)
             self.port_samples[key] = (total_bytes, now)
+
+            # Track ingress packet rate for DDoS detection.
+            total_rx_pkts = stat.rx_packets
+            prev_pkts = self.port_samples_pkts.get(key)
+            self.port_samples_pkts[key] = (total_rx_pkts, now)
+            if prev_pkts:
+                prev_p, prev_pts = prev_pkts
+                elapsed_p = max(now - prev_pts, 1e-6)
+                delta_pkts = max(total_rx_pkts - prev_p, 0)
+                pps = delta_pkts / elapsed_p
+                self._check_port_ddos(dpid, stat.port_no, pps, datapath)
+
             if not prev:
                 continue
 
@@ -1566,6 +2522,25 @@ class CampusController(app_manager.RyuApp):
             self.mac_learn_count += 1
         self.mac_to_port[dpid][src] = in_port
 
+        # Control-plane flood detection: runs on every packet-in, no polling delay.
+        # Detects random-MAC floods (controller attacks) within milliseconds.
+        self._track_ctrl_pkt_in(datapath, dpid, in_port)
+
+        # Port-scan detection: track unique dst_ports per src_ip in a sliding window.
+        if ip_pkt is not None:
+            _tcp = pkt.get_protocol(tcp.tcp)
+            _udp = pkt.get_protocol(udp.udp)
+            _dst_p = None
+            if _tcp is not None:
+                _dst_p = int(_tcp.dst_port)
+            elif _udp is not None:
+                _dst_p = int(_udp.dst_port)
+            if _dst_p is not None:
+                self._check_port_scan(ip_pkt.src, _dst_p, datapath)
+
+        if self._enforce_security_policy(datapath, msg, in_port, pkt, ip_pkt):
+            return
+
         # Fast-path for adaptive policy until stats-triggered flows are installed.
         if (
             self.reroute_active
@@ -1575,6 +2550,7 @@ class CampusController(app_manager.RyuApp):
             and ip_pkt.src in self.IT_CLIENT_IPS
             and ip_pkt.dst == self.PRIMARY_SERVER_IP
         ):
+            self.backup_path_packet_count += 1
             actions = [
                 parser.OFPActionSetField(ipv4_dst=self.BACKUP_SERVER_IP),
                 parser.OFPActionSetField(eth_dst=self.BACKUP_SERVER_MAC),
