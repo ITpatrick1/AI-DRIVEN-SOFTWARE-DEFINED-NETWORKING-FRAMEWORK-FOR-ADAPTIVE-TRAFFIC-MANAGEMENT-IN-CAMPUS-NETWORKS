@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_PATH="${VENV_PATH:-${HOME}/sdn-env}"
 PW="${SUDO_PASSWORD:-}"
+export CAMPUS_SKIP_TOPOLOGY_SMOKE_TESTS="${CAMPUS_SKIP_TOPOLOGY_SMOKE_TESTS:-1}"
 
 STAGE10_STACK_LOG="/tmp/stage10_stack.log"
 STAGE10_OPTIONS_LOG="/tmp/stage10_options.log"

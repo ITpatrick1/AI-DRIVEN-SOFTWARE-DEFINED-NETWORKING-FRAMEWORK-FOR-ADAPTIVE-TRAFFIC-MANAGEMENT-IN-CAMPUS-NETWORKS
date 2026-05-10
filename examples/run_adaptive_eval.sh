@@ -14,6 +14,7 @@ RESULTS_DIR="${RESULTS_DIR:-${REPO_ROOT}/results}"
 TAG="${1:-$(date +%Y%m%d_%H%M%S)}"
 PW="${SUDO_PASSWORD:-}"
 EVAL_ACTION_FILE="/tmp/campus_ml_action_eval_${TAG}.json"
+EVAL_MANUAL_SETTINGS_FILE="${CAMPUS_EVAL_MANUAL_SETTINGS_FILE:-/tmp/campus_manual_settings_eval_${TAG}.json}"
 
 # Tunable default thresholds for evaluation.
 HIGH="${CAMPUS_CONGEST_HIGH_MBPS:-40}"
@@ -50,6 +51,7 @@ cleanup() {
     wait "${RPID}" 2>/dev/null || true
   fi
   rm -f "${EVAL_ACTION_FILE}" >/dev/null 2>&1 || true
+  rm -f "${EVAL_MANUAL_SETTINGS_FILE}" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
 
@@ -77,6 +79,7 @@ export CAMPUS_METRICS_FILE="/tmp/campus_metrics.json"
 export CAMPUS_EVENTS_FILE="/tmp/campus_policy_events.jsonl"
 export CAMPUS_DQN_INTEGRATION_ENABLED="${CAMPUS_DQN_INTEGRATION_ENABLED:-0}"
 export CAMPUS_ML_ACTION_FILE="${EVAL_ACTION_FILE}"
+export CAMPUS_MANUAL_SETTINGS_FILE="${EVAL_MANUAL_SETTINGS_FILE}"
 controller_env=(
   "CAMPUS_CONGEST_HIGH_MBPS=${CAMPUS_CONGEST_HIGH_MBPS}"
   "CAMPUS_CONGEST_LOW_MBPS=${CAMPUS_CONGEST_LOW_MBPS}"
@@ -84,8 +87,9 @@ controller_env=(
   "CAMPUS_EVENTS_FILE=${CAMPUS_EVENTS_FILE}"
   "CAMPUS_DQN_INTEGRATION_ENABLED=${CAMPUS_DQN_INTEGRATION_ENABLED}"
   "CAMPUS_ML_ACTION_FILE=${CAMPUS_ML_ACTION_FILE}"
+  "CAMPUS_MANUAL_SETTINGS_FILE=${CAMPUS_MANUAL_SETTINGS_FILE}"
 )
-rm -f /tmp/campus_metrics.json /tmp/campus_policy_events.jsonl
+rm -f /tmp/campus_metrics.json /tmp/campus_policy_events.jsonl "${CAMPUS_MANUAL_SETTINGS_FILE}"
 env "${controller_env[@]}" ryu-manager examples/campus_controller.py >/tmp/ryu_campus.log 2>&1 &
 RPID=$!
 READY=0
@@ -116,6 +120,7 @@ if [[ -n "${PW}" ]]; then
     "CAMPUS_EVENTS_FILE=${CAMPUS_EVENTS_FILE}"
     "CAMPUS_DQN_INTEGRATION_ENABLED=${CAMPUS_DQN_INTEGRATION_ENABLED}"
     "CAMPUS_ML_ACTION_FILE=${CAMPUS_ML_ACTION_FILE}"
+    "CAMPUS_MANUAL_SETTINGS_FILE=${CAMPUS_MANUAL_SETTINGS_FILE}"
   )
   printf '%s\n' "${PW}" | sudo -S env "${env_keep[@]}" python3 examples/adaptive_eval.py \
     --results-dir "${RESULTS_DIR}" --tag "${TAG}"

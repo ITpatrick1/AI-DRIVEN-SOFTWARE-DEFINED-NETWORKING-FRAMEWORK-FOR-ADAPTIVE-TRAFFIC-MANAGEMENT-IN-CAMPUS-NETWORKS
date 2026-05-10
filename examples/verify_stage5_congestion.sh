@@ -15,6 +15,7 @@ METRICS_FILE="${CAMPUS_METRICS_FILE:-/tmp/campus_metrics.json}"
 EVENTS_FILE="${CAMPUS_EVENTS_FILE:-/tmp/campus_policy_events.jsonl}"
 ML_ACTION_FILE="${CAMPUS_ML_ACTION_FILE:-/tmp/stage5_ml_action.json}"
 MANUAL_SETTINGS_FILE="${CAMPUS_MANUAL_SETTINGS_FILE:-/tmp/stage5_manual_settings.json}"
+SECURITY_POLICY_FILE="${CAMPUS_SECURITY_POLICY_FILE:-/tmp/stage5_security_policy.json}"
 NETWORK_AUTOMATION_FILE="${CAMPUS_NETWORK_AUTOMATION_FILE:-/tmp/stage5_network_automation.json}"
 PW="${SUDO_PASSWORD:-}"
 
@@ -113,6 +114,7 @@ rm -f \
   "${EVENTS_FILE}" \
   "${ML_ACTION_FILE}" \
   "${MANUAL_SETTINGS_FILE}" \
+  "${SECURITY_POLICY_FILE}" \
   "${NETWORK_AUTOMATION_FILE}" >/dev/null 2>&1 || true
 sudo_run rm -f \
   "${RYU_LOG}" \
@@ -121,6 +123,7 @@ sudo_run rm -f \
   "${EVENTS_FILE}" \
   "${ML_ACTION_FILE}" \
   "${MANUAL_SETTINGS_FILE}" \
+  "${SECURITY_POLICY_FILE}" \
   "${NETWORK_AUTOMATION_FILE}" >/dev/null 2>&1 || true
 
 echo "[3/9] Starting Ryu controller..."
@@ -132,6 +135,7 @@ CAMPUS_PORT_CONGEST_HIGH_PCT="${VERIFY_PORT_HIGH}" \
 CAMPUS_PORT_CONGEST_LOW_PCT="${VERIFY_PORT_LOW}" \
 CAMPUS_ML_ACTION_FILE="${ML_ACTION_FILE}" \
 CAMPUS_MANUAL_SETTINGS_FILE="${MANUAL_SETTINGS_FILE}" \
+CAMPUS_SECURITY_POLICY_FILE="${SECURITY_POLICY_FILE}" \
 CAMPUS_NETWORK_AUTOMATION_FILE="${NETWORK_AUTOMATION_FILE}" \
 ryu-manager examples/campus_controller.py >"${RYU_LOG}" 2>&1 &
 RPID=$!

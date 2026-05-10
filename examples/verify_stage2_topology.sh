@@ -11,11 +11,36 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${LOG_DIR:-/tmp}"
 RYU_LOG="${LOG_DIR}/stage2_ryu.log"
 TOPO_LOG="${LOG_DIR}/stage2_topology.log"
+ML_ACTION_FILE="${CAMPUS_ML_ACTION_FILE:-/tmp/stage2_ml_action.json}"
+MANUAL_SETTINGS_FILE="${CAMPUS_MANUAL_SETTINGS_FILE:-/tmp/stage2_manual_settings.json}"
+SECURITY_POLICY_FILE="${CAMPUS_SECURITY_POLICY_FILE:-/tmp/stage2_security_policy.json}"
+NETWORK_AUTOMATION_FILE="${CAMPUS_NETWORK_AUTOMATION_FILE:-/tmp/stage2_network_automation.json}"
+PW="${SUDO_PASSWORD:-}"
 
 if [[ ! -f "${VENV_PATH}/bin/activate" ]]; then
   echo "[FAIL] Virtualenv not found at ${VENV_PATH}"
   exit 1
 fi
+
+ensure_sudo() {
+  if sudo -n true >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ -n "${PW}" ]]; then
+    printf '%s\n' "${PW}" | sudo -S -v >/dev/null
+    return 0
+  fi
+  echo "[INFO] This verifier needs sudo privileges (Mininet/OVS)."
+  sudo -v
+}
+
+sudo_run() {
+  if [[ -n "${PW}" ]]; then
+    printf '%s\n' "${PW}" | sudo -S "$@"
+  else
+    sudo "$@"
+  fi
+}
 
 cleanup() {
   if [[ -n "${RPID:-}" ]] && kill -0 "${RPID}" 2>/dev/null; then
@@ -27,12 +52,30 @@ trap cleanup EXIT INT TERM
 
 cd "${REPO_ROOT}"
 source "${VENV_PATH}/bin/activate"
+ensure_sudo
 
 echo "[1/5] Cleaning Mininet state..."
-sudo mn -c >/dev/null 2>&1 || true
-sudo pkill -f "ryu-manager examples/campus_controller.py" >/dev/null 2>&1 || true
+sudo_run mn -c >/dev/null 2>&1 || true
+sudo_run pkill -f "ryu-manager examples/campus_controller.py" >/dev/null 2>&1 || true
+rm -f \
+  "${RYU_LOG}" \
+  "${TOPO_LOG}" \
+  "${ML_ACTION_FILE}" \
+  "${MANUAL_SETTINGS_FILE}" \
+  "${SECURITY_POLICY_FILE}" \
+  "${NETWORK_AUTOMATION_FILE}" >/dev/null 2>&1 || true
+sudo_run rm -f \
+  "${ML_ACTION_FILE}" \
+  "${MANUAL_SETTINGS_FILE}" \
+  "${SECURITY_POLICY_FILE}" \
+  "${NETWORK_AUTOMATION_FILE}" >/dev/null 2>&1 || true
 
 echo "[2/5] Starting Ryu controller..."
+CAMPUS_DQN_INTEGRATION_ENABLED=0 \
+CAMPUS_ML_ACTION_FILE="${ML_ACTION_FILE}" \
+CAMPUS_MANUAL_SETTINGS_FILE="${MANUAL_SETTINGS_FILE}" \
+CAMPUS_SECURITY_POLICY_FILE="${SECURITY_POLICY_FILE}" \
+CAMPUS_NETWORK_AUTOMATION_FILE="${NETWORK_AUTOMATION_FILE}" \
 ryu-manager examples/campus_controller.py >"${RYU_LOG}" 2>&1 &
 RPID=$!
 
@@ -56,7 +99,12 @@ if [[ "${RYU_READY}" -ne 1 ]]; then
 fi
 
 echo "[3/5] Running campus topology in verification mode..."
-if ! sudo -E python3 examples/campus_topology.py --no-cli >"${TOPO_LOG}" 2>&1; then
+if ! sudo_run -E env \
+  CAMPUS_ML_ACTION_FILE="${ML_ACTION_FILE}" \
+  CAMPUS_MANUAL_SETTINGS_FILE="${MANUAL_SETTINGS_FILE}" \
+  CAMPUS_SECURITY_POLICY_FILE="${SECURITY_POLICY_FILE}" \
+  CAMPUS_NETWORK_AUTOMATION_FILE="${NETWORK_AUTOMATION_FILE}" \
+  python3 examples/campus_topology.py --no-cli >"${TOPO_LOG}" 2>&1; then
   echo "[FAIL] Topology execution failed."
   echo "----- Last topology log lines -----"
   tail -n 80 "${TOPO_LOG}" || true

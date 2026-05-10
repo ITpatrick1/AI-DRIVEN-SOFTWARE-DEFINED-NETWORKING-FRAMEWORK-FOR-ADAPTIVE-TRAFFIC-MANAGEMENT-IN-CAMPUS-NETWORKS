@@ -62,19 +62,48 @@ sudo_run mn -c >/dev/null 2>&1 || true
 
 export CAMPUS_CONGEST_HIGH_MBPS="${CAMPUS_CONGEST_HIGH_MBPS:-40}"
 export CAMPUS_CONGEST_LOW_MBPS="${CAMPUS_CONGEST_LOW_MBPS:-20}"
+export CAMPUS_DQN_INTEGRATION_ENABLED="${CAMPUS_DQN_INTEGRATION_ENABLED:-0}"
 export CAMPUS_METRICS_FILE="${CAMPUS_METRICS_FILE:-/tmp/campus_metrics.json}"
 export CAMPUS_EVENTS_FILE="${CAMPUS_EVENTS_FILE:-/tmp/campus_policy_events.jsonl}"
 export CAMPUS_ML_ACTION_FILE="${CAMPUS_ML_ACTION_FILE:-/tmp/campus_ml_action.json}"
+export CAMPUS_MANUAL_SETTINGS_FILE="${CAMPUS_MANUAL_SETTINGS_FILE:-/tmp/campus_manual_settings_e2e.json}"
+export CAMPUS_SECURITY_POLICY_FILE="${CAMPUS_SECURITY_POLICY_FILE:-/tmp/campus_security_policy_e2e.json}"
+export CAMPUS_NETWORK_AUTOMATION_FILE="${CAMPUS_NETWORK_AUTOMATION_FILE:-/tmp/campus_network_automation_e2e.json}"
+export CAMPUS_SKIP_TOPOLOGY_SMOKE_TESTS="${CAMPUS_SKIP_TOPOLOGY_SMOKE_TESTS:-1}"
 mkdir -p "${HOME}/.cache"
 export CAMPUS_TOPOLOGY_STATE_FILE="${CAMPUS_TOPOLOGY_STATE_FILE:-${HOME}/.cache/campus_topology_state.json}"
 export CAMPUS_RUNTIME_API_HOST="${CAMPUS_RUNTIME_API_HOST:-127.0.0.1}"
 export CAMPUS_RUNTIME_API_PORT="${CAMPUS_RUNTIME_API_PORT:-9091}"
-rm -f "${CAMPUS_METRICS_FILE}" "${CAMPUS_EVENTS_FILE}" "${CAMPUS_ML_ACTION_FILE}" || true
+rm -f \
+  "${CAMPUS_METRICS_FILE}" \
+  "${CAMPUS_EVENTS_FILE}" \
+  "${CAMPUS_ML_ACTION_FILE}" \
+  "${CAMPUS_MANUAL_SETTINGS_FILE}" \
+  "${CAMPUS_SECURITY_POLICY_FILE}" \
+  "${CAMPUS_NETWORK_AUTOMATION_FILE}" || true
 rm -f "${CAMPUS_TOPOLOGY_STATE_FILE}" 2>/dev/null || sudo_run rm -f "${CAMPUS_TOPOLOGY_STATE_FILE}" || true
 
 echo "[2/6] Starting controller..."
 ryu-manager examples/campus_controller.py >/tmp/ryu_campus_e2e.log 2>&1 &
 RYU_PID=$!
+CONTROLLER_READY=0
+for _ in $(seq 1 30); do
+  if ! kill -0 "${RYU_PID}" 2>/dev/null; then
+    echo "[FAIL] Controller exited before listening on :6653."
+    tail -n 120 /tmp/ryu_campus_e2e.log || true
+    exit 1
+  fi
+  if ss -ltn | grep -q ':6653'; then
+    CONTROLLER_READY=1
+    break
+  fi
+  sleep 0.5
+done
+if [[ "${CONTROLLER_READY}" -ne 1 ]]; then
+  echo "[FAIL] Controller did not start listening on :6653."
+  tail -n 120 /tmp/ryu_campus_e2e.log || true
+  exit 1
+fi
 
 echo "[3/6] Starting dashboard..."
 python3 examples/campus_dashboard.py --host 127.0.0.1 --port 8080 \

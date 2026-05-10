@@ -126,6 +126,10 @@ cleanup_stale() {
   pkill -f "campus_dashboard.py" >/dev/null 2>&1 || true
   pkill -f "examples/ml_policy_stub.py" >/dev/null 2>&1 || true
   pkill -f "examples/dqn_routing_agent.py" >/dev/null 2>&1 || true
+  pkill -f "examples/runtime_api_stub.py" >/dev/null 2>&1 || true
+  pkill -f "examples/performance_evaluator.py" >/dev/null 2>&1 || true
+  pkill -f "examples/simulation_runner.py" >/dev/null 2>&1 || true
+  rm -f /tmp/campus_sim_overlay.json 2>/dev/null || true
   sudo_run mn -c >/tmp/mn_cleanup_web.log 2>&1 || true
 }
 

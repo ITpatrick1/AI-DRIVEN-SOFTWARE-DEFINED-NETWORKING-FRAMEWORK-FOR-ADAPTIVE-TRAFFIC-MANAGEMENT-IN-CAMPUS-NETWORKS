@@ -15,6 +15,10 @@ TOPO_LOG="${LOG_DIR}/stage6_topology.log"
 METRICS_FILE="${CAMPUS_METRICS_FILE:-/tmp/campus_metrics.json}"
 S2_FLOWS="${LOG_DIR}/stage6_s2_flows.txt"
 S5_FLOWS="${LOG_DIR}/stage6_s5_flows.txt"
+ML_ACTION_FILE="${CAMPUS_ML_ACTION_FILE:-/tmp/stage6_ml_action.json}"
+MANUAL_SETTINGS_FILE="${CAMPUS_MANUAL_SETTINGS_FILE:-/tmp/stage6_manual_settings.json}"
+SECURITY_POLICY_FILE="${CAMPUS_SECURITY_POLICY_FILE:-/tmp/stage6_security_policy.json}"
+NETWORK_AUTOMATION_FILE="${CAMPUS_NETWORK_AUTOMATION_FILE:-/tmp/stage6_network_automation.json}"
 PW="${SUDO_PASSWORD:-}"
 
 if [[ ! -f "${VENV_PATH}/bin/activate" ]]; then
@@ -107,10 +111,33 @@ echo "[PASS] Stage 6 policy elements found in controller code."
 echo "[2/9] Cleaning runtime state..."
 sudo_run mn -c >/dev/null 2>&1 || true
 sudo_run pkill -f "ryu-manager examples/campus_controller.py" >/dev/null 2>&1 || true
-rm -f "${RYU_LOG}" "${TOPO_LOG}" "${METRICS_FILE}" "${S2_FLOWS}" "${S5_FLOWS}" >/dev/null 2>&1 || true
-sudo_run rm -f "${RYU_LOG}" "${TOPO_LOG}" "${METRICS_FILE}" "${S2_FLOWS}" "${S5_FLOWS}" >/dev/null 2>&1 || true
+rm -f \
+  "${RYU_LOG}" \
+  "${TOPO_LOG}" \
+  "${METRICS_FILE}" \
+  "${S2_FLOWS}" \
+  "${S5_FLOWS}" \
+  "${ML_ACTION_FILE}" \
+  "${MANUAL_SETTINGS_FILE}" \
+  "${SECURITY_POLICY_FILE}" \
+  "${NETWORK_AUTOMATION_FILE}" >/dev/null 2>&1 || true
+sudo_run rm -f \
+  "${RYU_LOG}" \
+  "${TOPO_LOG}" \
+  "${METRICS_FILE}" \
+  "${S2_FLOWS}" \
+  "${S5_FLOWS}" \
+  "${ML_ACTION_FILE}" \
+  "${MANUAL_SETTINGS_FILE}" \
+  "${SECURITY_POLICY_FILE}" \
+  "${NETWORK_AUTOMATION_FILE}" >/dev/null 2>&1 || true
 
 echo "[3/9] Starting Ryu controller..."
+CAMPUS_DQN_INTEGRATION_ENABLED=0 \
+CAMPUS_ML_ACTION_FILE="${ML_ACTION_FILE}" \
+CAMPUS_MANUAL_SETTINGS_FILE="${MANUAL_SETTINGS_FILE}" \
+CAMPUS_SECURITY_POLICY_FILE="${SECURITY_POLICY_FILE}" \
+CAMPUS_NETWORK_AUTOMATION_FILE="${NETWORK_AUTOMATION_FILE}" \
 ryu-manager examples/campus_controller.py >"${RYU_LOG}" 2>&1 &
 RPID=$!
 READY=0

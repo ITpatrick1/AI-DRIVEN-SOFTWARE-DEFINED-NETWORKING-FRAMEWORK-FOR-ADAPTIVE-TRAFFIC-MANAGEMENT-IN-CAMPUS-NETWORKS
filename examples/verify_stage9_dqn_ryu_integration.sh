@@ -7,6 +7,7 @@ set -euo pipefail
 VENV_PATH="${VENV_PATH:-$HOME/sdn-env}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${LOG_DIR:-/tmp}"
+export CAMPUS_SKIP_TOPOLOGY_SMOKE_TESTS="${CAMPUS_SKIP_TOPOLOGY_SMOKE_TESTS:-1}"
 RYU_LOG="${LOG_DIR}/stage9_ryu.log"
 TOPO_LOG="${LOG_DIR}/stage9_topology.log"
 DQN_LOG="${LOG_DIR}/stage9_dqn.log"

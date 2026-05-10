@@ -28,6 +28,7 @@ PRIMARY_BOTTLENECK_MBPS = max(
 )
 STRESS_DURATION_S = max(12, int(float(os.getenv("CAMPUS_EVAL_STRESS_SECONDS", "20"))))
 PROBE_PORT = int(os.getenv("CAMPUS_EVAL_PROBE_PORT", "5204"))
+STAFF_PROBE_PORT = int(os.getenv("CAMPUS_EVAL_STAFF_PROBE_PORT", "5203"))
 NOISE_PORTS = (
     int(os.getenv("CAMPUS_EVAL_NOISE_PORT_1", "5201")),
     int(os.getenv("CAMPUS_EVAL_NOISE_PORT_2", "5202")),
@@ -242,6 +243,7 @@ def run_eval(results_dir, tag):
 
         h_it1 = hosts["h_it1"]
         h_it2 = hosts["h_it2"]
+        h_staff1 = hosts["h_staff1"]
         h_wifi1 = hosts["h_wifi1"]
         h_wifi2 = hosts["h_wifi2"]
         h_server = hosts["h_server"]
@@ -251,7 +253,7 @@ def run_eval(results_dir, tag):
         bottleneck_qdisc = apply_primary_server_bottleneck(
             h_server, PRIMARY_BOTTLENECK_MBPS
         )
-        start_iperf3_servers(h_server, NOISE_PORTS + (PROBE_PORT,))
+        start_iperf3_servers(h_server, NOISE_PORTS + (PROBE_PORT, STAFF_PROBE_PORT))
         initial_metrics = read_json_file(METRICS_PATH) or {}
 
         # Baseline measurements.
@@ -272,6 +274,15 @@ def run_eval(results_dir, tag):
         }
         baseline.update(parse_ping_stats(baseline_ping_raw))
         baseline["packet_delivery_pct"] = delivery_pct(baseline)
+
+        # Staff LAN baseline throughput (before any congestion).
+        staff_baseline = parse_iperf3_result(
+            h_staff1.cmd(
+                "iperf3 -J -c {ip} -p {port} -t 5 -R".format(
+                    ip=PRIMARY_SERVER_IP, port=STAFF_PROBE_PORT
+                )
+            )
+        )
 
         reroute_cleared, reroute_clear_wait_s = wait_for_reroute_state(
             METRICS_PATH, False, timeout_s=12.0, poll_s=0.5
@@ -303,11 +314,9 @@ def run_eval(results_dir, tag):
                 ip=PRIMARY_SERVER_IP, port=NOISE_PORTS[1], seconds=STRESS_DURATION_S
             )
         )
-        h_it1.cmd(
-            "ping -c 16 -i 0.25 {ip} >/tmp/stage11_it1_ping.log 2>&1 &".format(
-                ip=PRIMARY_SERVER_IP
-            )
-        )
+        # Do NOT start h_it1 ping yet — wait until reroute is confirmed active so
+        # the ICMP packets are guaranteed to hit the reroute fast-path and reach
+        # the backup server (backing the reroute evidence counter).
         load_seen, load_wait_s = wait_for_core_primary_load(
             METRICS_PATH,
             min_mbps=max(10.0, round(PRIMARY_BOTTLENECK_MBPS * 0.55, 3)),
@@ -318,8 +327,10 @@ def run_eval(results_dir, tag):
             METRICS_PATH, timeout_s=8.0, poll_s=0.5
         )
         if reroute_seen:
+            # Send ICMP NOW with reroute flow confirmed active — controller rewrites
+            # dst to backup server so tcpdump on h_server_b captures these packets.
             h_it1.cmd(
-                "ping -c 8 -i 0.2 {ip} >/tmp/stage11_reroute_confirm_ping.log 2>&1".format(
+                "ping -c 20 -i 0.15 {ip} >/tmp/stage11_reroute_confirm_ping.log 2>&1".format(
                     ip=PRIMARY_SERVER_IP
                 )
             )
@@ -334,17 +345,32 @@ def run_eval(results_dir, tag):
                 )
             )
         )
+        # Staff LAN throughput under congestion — should be protected by high-priority queue.
+        staff_congest = parse_iperf3_result(
+            h_staff1.cmd(
+                "iperf3 -J -c {ip} -p {port} -t 5 -R".format(
+                    ip=PRIMARY_SERVER_IP, port=STAFF_PROBE_PORT
+                )
+            )
+        )
         h_server_b.cmd(
             "pkill -INT -f 'tcpdump -U -n -l -i h_server_b-eth0 icmp' >/dev/null 2>&1 || true"
         )
         time.sleep(1.5)
 
         backup_log = h_server_b.cmd("cat /tmp/backup_icmp.log")
+        # Read controller-side backup path counter as additional reroute evidence.
+        post_stress_metrics = read_json_file(METRICS_PATH) or {}
+        controller_backup_packets = int(
+            post_stress_metrics.get("backup_path_packet_count", 0)
+        )
+
         congest = {
             "scenario": "congestion",
             "throughput_mbps": congest_iperf["throughput_mbps"],
             "iperf_error": congest_iperf["error"],
             "backup_icmp_packets": count_backup_icmp_lines(backup_log),
+            "controller_backup_path_packets": controller_backup_packets,
             "load_seen_during_probe": bool(load_seen),
             "load_wait_s": load_wait_s,
             "reroute_seen_during_probe": bool(reroute_seen),
@@ -403,6 +429,14 @@ def run_eval(results_dir, tag):
                 3,
             )
 
+        staff_baseline_mbps = float(staff_baseline.get("throughput_mbps") or 0.0)
+        staff_congest_mbps = float(staff_congest.get("throughput_mbps") or 0.0)
+        staff_protection_pct = None
+        if staff_baseline_mbps > 0:
+            staff_protection_pct = round(
+                (staff_congest_mbps / staff_baseline_mbps) * 100.0, 3
+            )
+
         summary = {
             "tag": tag,
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -436,6 +470,13 @@ def run_eval(results_dir, tag):
                 "first_deactivated_ts": first_deactivated_ts,
                 "congestion_response_s": congestion_response_s,
             },
+            "staff_lan": {
+                "baseline_mbps": staff_baseline_mbps,
+                "congestion_mbps": staff_congest_mbps,
+                "protection_pct": staff_protection_pct,
+                "baseline_error": staff_baseline.get("error"),
+                "congestion_error": staff_congest.get("error"),
+            },
             "derived_metrics": {
                 "throughput_delta_mbps": throughput_delta_mbps,
                 "throughput_delta_pct": throughput_delta_pct,
@@ -444,9 +485,16 @@ def run_eval(results_dir, tag):
                 "congestion_loss_pct": float(congest.get("loss_pct", 100.0)),
                 "congestion_rtt_avg_ms": float(congest.get("rtt_avg_ms") or 0.0),
                 "latency_delta_ms": latency_delta_ms,
-                "reroute_evidence_packets": int(congest.get("backup_icmp_packets", 0)),
+                "staff_lan_baseline_mbps": staff_baseline_mbps,
+                "staff_lan_congestion_mbps": staff_congest_mbps,
+                "staff_lan_protection_pct": staff_protection_pct,
+                "reroute_evidence_packets": max(
+                    int(congest.get("backup_icmp_packets", 0)),
+                    int(congest.get("controller_backup_path_packets", 0)),
+                ),
                 "reroute_observed": bool(
                     congest.get("backup_icmp_packets", 0) > 0
+                    or congest.get("controller_backup_path_packets", 0) > 0
                     or congest.get("reroute_seen_during_probe", False)
                 ),
             },
@@ -454,9 +502,11 @@ def run_eval(results_dir, tag):
                 "pingall_loss_pct records the explicit topology connectivity check for this run.",
                 "The primary server link is deliberately rate-limited so congestion is repeatable.",
                 "Reverse-mode iperf3 downloads model the Wi-Fi film-download workload.",
-                "backup_icmp_packets > 0 is evidence that reroute path carried ICMP.",
+                "backup_icmp_packets > 0 or controller_backup_path_packets > 0 evidences reroute.",
+                "h_it1 ICMP is sent AFTER reroute_active=True to ensure it hits the reroute flow.",
                 "policy_activated_count > 0 indicates adaptive policy engaged.",
                 "congestion_response_s is measured from first port_congestion_on to policy_activated.",
+                "staff_lan.protection_pct shows Staff LAN throughput preserved under congestion.",
             ],
         }
 

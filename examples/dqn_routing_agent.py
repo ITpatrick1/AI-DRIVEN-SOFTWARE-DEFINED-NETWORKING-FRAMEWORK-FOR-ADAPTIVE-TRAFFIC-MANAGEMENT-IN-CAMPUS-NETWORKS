@@ -33,13 +33,24 @@ import torch.nn as nn
 import torch.optim as optim
 
 
-# DQN action space used by the controller ML hook.
+# DQN action space used by the controller ML hook (16 campus-specific actions).
 ACTION_NAMES = [
-    "keep_primary",
-    "prefer_backup_path",
-    "tighten_thresholds",
-    "relax_thresholds",
-    "emergency_throttle",
+    "normal_mode",                    # 0  steady-state: hold primary path, preferred thresholds
+    "throttle_wifi_30pct",            # 1  mild WiFi throttle (–30 % of headroom)
+    "throttle_wifi_70pct",            # 2  moderate WiFi throttle (–70 % of headroom)
+    "throttle_wifi_90pct",            # 3  severe WiFi throttle, shift to backup path
+    "boost_staff_lan",                # 4  raise staff-LAN thresholds (priority office traffic)
+    "boost_server_zone",              # 5  raise server-zone thresholds (priority h_srv)
+    "boost_lab_zone",                 # 6  raise lab-zone thresholds (IT/Net labs)
+    "exam_mode",                      # 7  exam: tighten WiFi, relax academic wired zones
+    "peak_hour_mode",                 # 8  peak hour: force backup path, tighten all thresholds
+    "throttle_wifi_boost_staff",      # 9  WiFi –50 % + staff +20 %
+    "throttle_wifi_boost_server",     # 10 WiFi –50 % + server +20 %
+    "throttle_social_boost_academic", # 11 deprioritise social/bulk traffic, lift academic
+    "emergency_staff_protection",     # 12 force backup path + isolate staff zone
+    "emergency_server_protection",    # 13 force backup path + protect server zone
+    "security_isolation_wifi",        # 14 security event: isolate WiFi zone via backup path
+    "load_balance_ds1_ds2",           # 15 explicit load-balance between distribution switches
 ]
 
 
@@ -93,11 +104,13 @@ class DQN(nn.Module):
     def __init__(self, in_dim: int, out_dim: int):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(in_dim, 128),
+            nn.Linear(in_dim, 256),
             nn.ReLU(),
-            nn.Linear(128, 96),
+            nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(96, out_dim),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, out_dim),
         )
 
     def forward(self, x):
@@ -109,6 +122,7 @@ class AgentConfig:
     metrics_file: str
     action_file: str
     model_file: str
+    stakeholder_policy_file: str
     interval: float
     gamma: float
     lr: float
@@ -126,7 +140,7 @@ class AgentConfig:
 class DQNRoutingAgent:
     def __init__(self, cfg: AgentConfig):
         self.cfg = cfg
-        self.state_dim = 12
+        self.state_dim = 14  # 12 network features + exam_flag + security_flag
         self.n_actions = len(ACTION_NAMES)
 
         self.policy_net = DQN(self.state_dim, self.n_actions)
@@ -140,8 +154,78 @@ class DQNRoutingAgent:
         self.prev_state = None
         self.prev_action = None
         self.prev_metrics = None
+        self._stakeholder_policy_mtime = 0.0
+        self.stakeholder_policy = self._default_stakeholder_policy()
 
+        # Initialize continuous dataset logging
+        self.dataset_file = os.path.join(os.path.dirname(__file__), "..", "results", "live_operation_dataset.csv")
+        self._init_dataset_log()
+
+        self._load_stakeholder_policy()
         self._load_model()
+
+    def _init_dataset_log(self):
+        try:
+            os.makedirs(os.path.dirname(self.dataset_file), exist_ok=True)
+            if not os.path.exists(self.dataset_file):
+                with open(self.dataset_file, "w", encoding="utf-8") as f:
+                    f.write("timestamp,core_mbps,wifi_mbps,core_util_pct,avg_util_pct,max_util_pct,congested_ports_count,estimated_latency_ms,queue_pressure_pct,core_delta_mbps,reroute_active,student_throttle_active,exam_flag,security_flag,action,reward\n")
+        except Exception as e:
+            print(f"Warning: could not initialize dataset log: {e}")
+
+    @staticmethod
+    def _default_stakeholder_policy():
+        return {
+            "targets": {
+                "latency_ms": 20.0,
+                "max_util_pct": 55.0,
+                "queue_pressure_pct": 60.0,
+            },
+            "threshold_bounds": {
+                "min_high_mbps": 20.0,
+                "max_high_mbps": 180.0,
+                "min_low_mbps": 8.0,
+                "min_port_high_pct": 40.0,
+                "max_port_high_pct": 95.0,
+            },
+            "preferred_thresholds": {
+                "congest_high_mbps": 40.0,
+                "congest_low_mbps": 20.0,
+                "port_congest_high_pct": 80.0,
+                "port_congest_low_pct": 65.0,
+            },
+            "reward_weights": {
+                "max_util_penalty": 0.9,
+                "avg_util_penalty": 0.5,
+                "congestion_penalty": 0.45,
+                "latency_penalty": 0.25,
+                "queue_pressure_penalty": 0.25,
+                "volatility_penalty": 0.05,
+                "healthy_state_bonus": 0.4,
+                "low_latency_bonus": 0.2,
+            },
+        }
+
+    def _load_stakeholder_policy(self):
+        path = self.cfg.stakeholder_policy_file
+        if not path or not os.path.exists(path):
+            return
+        try:
+            mtime = os.path.getmtime(path)
+            if mtime <= self._stakeholder_policy_mtime:
+                return
+            payload = read_json(path)
+            if not isinstance(payload, dict):
+                return
+            merged = self._default_stakeholder_policy()
+            for key in ("targets", "threshold_bounds", "preferred_thresholds", "reward_weights"):
+                if isinstance(payload.get(key), dict):
+                    merged[key].update(payload[key])
+            self.stakeholder_policy = merged
+            self._stakeholder_policy_mtime = mtime
+            print("Loaded stakeholder DQN policy:", path)
+        except Exception as exc:
+            print(f"Warning: failed to load stakeholder policy ({exc}).")
 
     def _load_model(self):
         if not os.path.exists(self.cfg.model_file):
@@ -213,20 +297,29 @@ class DQNRoutingAgent:
             prev_core = _safe_float(self.prev_metrics.get("core_primary_mbps", 0.0))
         core_delta = core_mbps - prev_core
 
-        # Normalized state vector.
+        # Timetable / security context signals (dims 13–14).
+        exam_flag = _safe_float(metrics.get("timetable_exam_flag", 0.0))
+        exam_flag = min(1.0, max(0.0, exam_flag))
+        ddos_active = 1.0 if bool(metrics.get("ddos_active", False)) else 0.0
+        portscan_active = 1.0 if bool(metrics.get("portscan_active", False)) else 0.0
+        security_flag = min(1.0, ddos_active + portscan_active * 0.5)
+
+        # Normalized 14-dim state vector.
         state = [
-            min(1.5, core_mbps / 200.0),
-            min(1.5, wifi_mbps / 200.0),
-            core_util_pct / 100.0,
-            avg_util / 100.0,
-            max_util / 100.0,
-            min(1.0, congested_ports / 8.0),
-            reroute_active,
-            throttle_active,
-            min(1.5, pkt_in / 5000.0),
-            min(1.5, flow_mod / 5000.0),
-            min(1.5, latency_ms / 100.0),
-            min(1.5, queue_pressure / 100.0),
+            min(1.5, core_mbps / 200.0),      # 0  core throughput
+            min(1.5, wifi_mbps / 200.0),       # 1  wifi throughput
+            core_util_pct / 100.0,             # 2  core link utilisation
+            avg_util / 100.0,                  # 3  average port utilisation
+            max_util / 100.0,                  # 4  max port utilisation
+            min(1.0, congested_ports / 8.0),   # 5  congested port count
+            reroute_active,                    # 6  reroute flag
+            throttle_active,                   # 7  throttle flag
+            min(1.5, pkt_in / 5000.0),         # 8  packet-in rate
+            min(1.5, flow_mod / 5000.0),       # 9  flow-mod rate
+            min(1.5, latency_ms / 100.0),      # 10 estimated latency
+            min(1.5, queue_pressure / 100.0),  # 11 queue pressure
+            exam_flag,                         # 12 timetable exam flag
+            security_flag,                     # 13 DDoS / port-scan active
         ]
 
         feature_view = {
@@ -241,33 +334,52 @@ class DQNRoutingAgent:
             "core_delta_mbps": round(core_delta, 3),
             "reroute_active": bool(reroute_active),
             "student_throttle_active": bool(throttle_active),
+            "exam_flag": round(exam_flag, 3),
+            "security_flag": round(security_flag, 3),
         }
         return torch.tensor(state, dtype=torch.float32), feature_view
 
     def _reward(self, feature_view: dict):
         # Reward prioritizes low congestion/latency and stable throughput.
+        weights = self.stakeholder_policy.get("reward_weights", {})
+        targets = self.stakeholder_policy.get("targets", {})
         max_util = _safe_float(feature_view.get("max_util_pct", 0.0))
         avg_util = _safe_float(feature_view.get("avg_util_pct", 0.0))
         latency = _safe_float(feature_view.get("estimated_latency_ms", 0.0))
         congested = _safe_float(feature_view.get("congested_ports_count", 0.0))
         queue_pressure = _safe_float(feature_view.get("queue_pressure_pct", 0.0))
         core_delta = _safe_float(feature_view.get("core_delta_mbps", 0.0))
+        target_latency = _safe_float(targets.get("latency_ms", 20.0), 20.0)
+        target_util = _safe_float(targets.get("max_util_pct", 55.0), 55.0)
+        target_queue = _safe_float(targets.get("queue_pressure_pct", 60.0), 60.0)
 
         reward = 0.0
-        reward -= 0.9 * (max_util / 100.0)
-        reward -= 0.5 * (avg_util / 100.0)
-        reward -= 0.45 * congested
-        reward -= 0.25 * (latency / 100.0)
-        reward -= 0.25 * (queue_pressure / 100.0)
+        reward -= _safe_float(weights.get("max_util_penalty", 0.9), 0.9) * (
+            max_util / 100.0
+        )
+        reward -= _safe_float(weights.get("avg_util_penalty", 0.5), 0.5) * (
+            avg_util / 100.0
+        )
+        reward -= _safe_float(weights.get("congestion_penalty", 0.45), 0.45) * congested
+        reward -= _safe_float(weights.get("latency_penalty", 0.25), 0.25) * (
+            latency / 100.0
+        )
+        reward -= _safe_float(
+            weights.get("queue_pressure_penalty", 0.25), 0.25
+        ) * (queue_pressure / 100.0)
 
         # Mild penalty for sudden traffic surge volatility.
-        reward -= 0.05 * abs(core_delta / 50.0)
+        reward -= _safe_float(weights.get("volatility_penalty", 0.05), 0.05) * abs(
+            core_delta / 50.0
+        )
 
         # Bonus for healthy state.
-        if max_util < 55.0 and congested == 0:
-            reward += 0.4
-        if latency < 20.0:
-            reward += 0.2
+        if max_util < target_util and congested == 0:
+            reward += _safe_float(weights.get("healthy_state_bonus", 0.4), 0.4)
+        if latency < target_latency:
+            reward += _safe_float(weights.get("low_latency_bonus", 0.2), 0.2)
+        if queue_pressure < target_queue:
+            reward += _safe_float(weights.get("healthy_state_bonus", 0.4), 0.4) * 0.25
         return float(reward)
 
     def _select_action(self, state_vec):
@@ -309,10 +421,14 @@ class DQNRoutingAgent:
             self.target_net.load_state_dict(self.policy_net.state_dict())
 
     def _clamp_thresholds(self, high: float, low: float):
-        high = max(20.0, min(180.0, float(high)))
-        low = max(8.0, min(high - 1.0, float(low)))
+        bounds = self.stakeholder_policy.get("threshold_bounds", {})
+        min_high = _safe_float(bounds.get("min_high_mbps", 20.0), 20.0)
+        max_high = _safe_float(bounds.get("max_high_mbps", 180.0), 180.0)
+        min_low = _safe_float(bounds.get("min_low_mbps", 8.0), 8.0)
+        high = max(min_high, min(max_high, float(high)))
+        low = max(min_low, min(high - 1.0, float(low)))
         if low >= high:
-            low = max(8.0, high * 0.5)
+            low = max(min_low, high * 0.5)
         return round(high, 2), round(low, 2)
 
     def _build_action_payload(
@@ -325,43 +441,142 @@ class DQNRoutingAgent:
         q_values: list[float],
     ):
         action_name = ACTION_NAMES[action_idx]
-        cur_high = _safe_float(metrics.get("congest_high_mbps", 40.0))
-        cur_low = _safe_float(metrics.get("congest_low_mbps", 20.0))
-        port_high = _safe_float(metrics.get("port_congest_high_pct", 80.0))
-        port_low = _safe_float(metrics.get("port_congest_low_pct", 65.0))
+        preferred = self.stakeholder_policy.get("preferred_thresholds", {})
+        bounds = self.stakeholder_policy.get("threshold_bounds", {})
+        cur_high = _safe_float(
+            metrics.get(
+                "congest_high_mbps", preferred.get("congest_high_mbps", 40.0)
+            ),
+            40.0,
+        )
+        cur_low = _safe_float(
+            metrics.get("congest_low_mbps", preferred.get("congest_low_mbps", 20.0)),
+            20.0,
+        )
+        port_high = _safe_float(
+            metrics.get(
+                "port_congest_high_pct",
+                preferred.get("port_congest_high_pct", 80.0),
+            ),
+            80.0,
+        )
+        port_low = _safe_float(
+            metrics.get(
+                "port_congest_low_pct", preferred.get("port_congest_low_pct", 65.0)
+            ),
+            65.0,
+        )
 
         routing_choice = "primary_path"
         force = False
-
-        if action_name == "keep_primary":
+        # Each action adjusts thresholds relative to current/preferred values.
+        if action_name == "normal_mode":
             routing_choice = "primary_path"
             force = False
             cur_high += 2.0
-        elif action_name == "prefer_backup_path":
+
+        elif action_name == "throttle_wifi_30pct":
+            routing_choice = "primary_path"
+            force = False
+            cur_high -= 4.0
+            port_high -= 3.0
+
+        elif action_name == "throttle_wifi_70pct":
+            routing_choice = "primary_path"
+            force = bool(metrics.get("reroute_active", False))
+            cur_high -= 8.0
+            port_high -= 7.0
+            port_low -= 5.0
+
+        elif action_name == "throttle_wifi_90pct":
+            routing_choice = "backup_path"
+            force = True
+            cur_high -= 14.0
+            port_high -= 12.0
+            port_low -= 10.0
+
+        elif action_name == "boost_staff_lan":
+            routing_choice = "primary_path"
+            force = False
+            cur_high += 5.0
+            port_high += 4.0
+
+        elif action_name == "boost_server_zone":
+            routing_choice = "primary_path"
+            force = False
+            cur_high += 8.0
+            port_high += 5.0
+            port_low += 3.0
+
+        elif action_name == "boost_lab_zone":
+            routing_choice = "primary_path"
+            force = False
+            cur_high += 4.0
+            port_high += 3.0
+
+        elif action_name == "exam_mode":
+            routing_choice = "primary_path"
+            force = True
+            cur_high -= 6.0
+            port_high -= 4.0
+            port_low -= 2.0
+
+        elif action_name == "peak_hour_mode":
+            routing_choice = "backup_path"
+            force = True
+            cur_high -= 8.0
+            port_high -= 6.0
+            port_low -= 4.0
+
+        elif action_name == "throttle_wifi_boost_staff":
             routing_choice = "backup_path"
             force = True
             cur_high -= 5.0
-        elif action_name == "tighten_thresholds":
-            routing_choice = "primary_path"
-            force = bool(metrics.get("reroute_active", False))
-            cur_high -= 6.0
-            port_high -= 5.0
-            port_low -= 5.0
-        elif action_name == "relax_thresholds":
-            routing_choice = "primary_path"
-            force = False
-            cur_high += 6.0
-            port_high += 4.0
-            port_low += 3.0
-        elif action_name == "emergency_throttle":
+            port_high -= 4.0
+
+        elif action_name == "throttle_wifi_boost_server":
             routing_choice = "backup_path"
             force = True
-            cur_high -= 10.0
+            cur_high -= 5.0
+            port_high += 3.0
+
+        elif action_name == "throttle_social_boost_academic":
+            routing_choice = "primary_path"
+            force = False
+            cur_high += 3.0
+            port_high -= 2.0
+
+        elif action_name == "emergency_staff_protection":
+            routing_choice = "backup_path"
+            force = True
+            cur_high -= 12.0
             port_high -= 10.0
-            port_low -= 10.0
+            port_low -= 8.0
+
+        elif action_name == "emergency_server_protection":
+            routing_choice = "backup_path"
+            force = True
+            cur_high -= 12.0
+            port_high -= 8.0
+            port_low -= 6.0
+
+        elif action_name == "security_isolation_wifi":
+            routing_choice = "backup_path"
+            force = True
+            cur_high -= 15.0
+            port_high -= 14.0
+            port_low -= 12.0
+
+        elif action_name == "load_balance_ds1_ds2":
+            routing_choice = "load_balance"
+            force = True
+            cur_high += 1.0
+            port_high += 2.0
 
         high, low = self._clamp_thresholds(cur_high, cur_low if cur_low > 0 else cur_high * 0.5)
-        port_high = round(max(40.0, min(95.0, port_high)), 2)
+        min_port_high = _safe_float(bounds.get("min_port_high_pct", 40.0), 40.0)
+        max_port_high = _safe_float(bounds.get("max_port_high_pct", 95.0), 95.0)
+        port_high = round(max(min_port_high, min(max_port_high, port_high)), 2)
         port_low = round(max(30.0, min(port_high - 1.0, port_low)), 2)
 
         q_map = {
@@ -385,6 +600,7 @@ class DQNRoutingAgent:
                 "reward": round(float(reward), 6),
                 "epsilon": round(float(epsilon), 6),
                 "steps": int(self.steps),
+                "targets": self.stakeholder_policy.get("targets", {}),
             },
             # Controller reads this top-level q_values map for event logging.
             "q_values": q_map,
@@ -396,11 +612,13 @@ class DQNRoutingAgent:
         print("  metrics:", self.cfg.metrics_file)
         print("  action :", self.cfg.action_file)
         print("  model  :", self.cfg.model_file)
+        print("  policy :", self.cfg.stakeholder_policy_file)
         print("  interval:", self.cfg.interval)
 
         loops = 0
         while True:
             loops += 1
+            self._load_stakeholder_policy()
             metrics = read_json(self.cfg.metrics_file)
             if not metrics:
                 time.sleep(self.cfg.interval)
@@ -421,6 +639,13 @@ class DQNRoutingAgent:
                     False,
                 )
                 self._maybe_train()
+
+            # Maintain continuous dataset from current operation
+            try:
+                with open(self.dataset_file, "a", encoding="utf-8") as f:
+                    f.write(f"{time.time():.2f},{feature_view['core_mbps']},{feature_view['wifi_mbps']},{feature_view['core_util_pct']},{feature_view['avg_util_pct']},{feature_view['max_util_pct']},{feature_view['congested_ports_count']},{feature_view['estimated_latency_ms']},{feature_view['queue_pressure_pct']},{feature_view['core_delta_mbps']},{int(feature_view['reroute_active'])},{int(feature_view['student_throttle_active'])},{feature_view['exam_flag']},{feature_view['security_flag']},{ACTION_NAMES[action_idx]},{reward:.4f}\n")
+            except Exception as e:
+                print(f"Warning: failed to append to dataset: {e}")
 
             self.steps += 1
             payload = self._build_action_payload(
@@ -467,6 +692,10 @@ def parse_args():
     p.add_argument("--metrics-file", default="/tmp/campus_metrics.json")
     p.add_argument("--action-file", default="/tmp/campus_ml_action.json")
     p.add_argument("--model-file", default="/tmp/campus_dqn_model.pt")
+    p.add_argument(
+        "--stakeholder-policy-file",
+        default=os.getenv("CAMPUS_DQN_POLICY_FILE", "/tmp/campus_dqn_policy.json"),
+    )
     p.add_argument("--interval", type=float, default=2.0)
     p.add_argument("--gamma", type=float, default=0.95)
     p.add_argument("--lr", type=float, default=0.001)
@@ -497,6 +726,7 @@ def main():
         metrics_file=args.metrics_file,
         action_file=args.action_file,
         model_file=args.model_file,
+        stakeholder_policy_file=args.stakeholder_policy_file,
         interval=max(0.5, float(args.interval)),
         gamma=float(args.gamma),
         lr=float(args.lr),
