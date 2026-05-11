@@ -11,4 +11,8 @@ dist
 doc/html
 doc/latex
 trunk
+.claude/
+.vscode/
+my document guid/
+__pycache__/
 

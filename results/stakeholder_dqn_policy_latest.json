@@ -1,0 +1,45 @@
+{
+  "preferred_thresholds": {
+    "congest_high_mbps": 36.16,
+    "congest_low_mbps": 20.25,
+    "port_congest_high_pct": 71.68,
+    "port_congest_low_pct": 56.68,
+    "priority_mode": "academic_first",
+    "response_count": 14,
+    "source": "stakeholder_requirements_csv"
+  },
+  "response_count": 14,
+  "reward_weights": {
+    "avg_util_penalty": 0.588,
+    "congestion_penalty": 0.583,
+    "healthy_state_bonus": 0.427,
+    "latency_penalty": 0.375,
+    "low_latency_bonus": 0.273,
+    "max_util_penalty": 0.997,
+    "queue_pressure_penalty": 0.27,
+    "volatility_penalty": 0.05
+  },
+  "source": "stakeholder_requirements_csv",
+  "stakeholder_bias": {
+    "preferred_mode": "academic_first",
+    "priority_order": [
+      "laboratory_block",
+      "staff_lan",
+      "student_wifi"
+    ],
+    "protect_labs": true,
+    "protect_staff_lan": true
+  },
+  "targets": {
+    "latency_ms": 20.0,
+    "max_util_pct": 65.0,
+    "queue_pressure_pct": 60.67
+  },
+  "threshold_bounds": {
+    "max_high_mbps": 120.0,
+    "max_port_high_pct": 95.0,
+    "min_high_mbps": 28.0,
+    "min_low_mbps": 12.0,
+    "min_port_high_pct": 55.0
+  }
+}

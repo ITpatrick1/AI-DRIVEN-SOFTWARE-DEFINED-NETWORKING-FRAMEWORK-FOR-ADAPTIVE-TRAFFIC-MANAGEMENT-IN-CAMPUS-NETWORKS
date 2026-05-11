@@ -1,0 +1,29 @@
+{
+  "scenario": "congestion",
+  "label": "Congestion Flood",
+  "started_at_ms": 1778379663764,
+  "duration_s": 45,
+  "convergence_time_ms": null,
+  "security_response_time_ms": 0.0,
+  "throughput_before_mbps": 0.0,
+  "throughput_after_mbps": 0.0,
+  "reroute_triggered": false,
+  "throttle_triggered": false,
+  "ddos_blocked": 244,
+  "slo_violations": 0,
+  "dqn_reward": null,
+  "zones": {
+    "wifi": {
+      "mbps_peak": 66.79636432417358,
+      "mbps_normal": 0.0
+    },
+    "core": {
+      "mbps_peak": 66.79636432417358
+    }
+  },
+  "success": false,
+  "notes": [
+    "iperf3 flood started on: h_wifi1, h_wifi2",
+    "Security response: 0.0ms"
+  ]
+}

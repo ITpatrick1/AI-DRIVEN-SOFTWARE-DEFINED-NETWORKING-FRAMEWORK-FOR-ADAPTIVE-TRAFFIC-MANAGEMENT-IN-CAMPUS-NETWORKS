@@ -1,0 +1,28 @@
+{
+  "scenario": "class",
+  "label": "Class Session",
+  "started_at_ms": 1778449935552,
+  "duration_s": 60,
+  "convergence_time_ms": null,
+  "security_response_time_ms": null,
+  "throughput_before_mbps": 50.0,
+  "throughput_after_mbps": 50.0,
+  "reroute_triggered": false,
+  "throttle_triggered": false,
+  "ddos_blocked": 0,
+  "slo_violations": 0,
+  "dqn_reward": null,
+  "zones": {
+    "wifi": {
+      "mbps_peak": 15.0,
+      "mbps_normal": 50.0
+    },
+    "core": {
+      "mbps_peak": 50.0
+    }
+  },
+  "success": false,
+  "notes": [
+    "Class session: Moodle/Zoom from h_it1, h_it2, h_net1"
+  ]
+}

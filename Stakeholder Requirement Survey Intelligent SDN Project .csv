@@ -1,0 +1,216 @@
+"Timestamp","Username","What is your role at Tumba College? ","  Which area do you mainly work or study in?  ","What device(s) do you mainly use on the college network?  ","  What do you mainly use the college network for? (Select your top 3)","How often does the network become slow or fail during peak hours (10 AM – 3 PM)?  ","Which of these problems have you personally experienced? (Select all that apply)","On average, how many hours per week are you affected by network problems?  ","Rate the current network quality during these time periods (1 = Very poor, 5 = Excellent) [Morning (8 AM – 12 PM)]","Rate the current network quality during these time periods (1 = Very poor, 5 = Excellent) [Afternoon (1 PM – 5 PM)]","Rate the current network quality during these time periods (1 = Very poor, 5 = Excellent) [Evening (after 5 PM)]","In your own words, describe the worst network problem you have ever faced at Tumba College. When did it happen, what were you trying to do, and how did it affect your work or studies?","If the network is congested, which policy should the AI enforce automatically?  ","How useful would it be if the network automatically gave your lab more bandwidth 10 minutes before your class starts?","If a network link fails, what is the maximum time you can tolerate before the AI reconnects you?  "," Which of these future technologies would benefit Tumba College most? (Pick your top 2)","  What is your role? (Please confirm)  ","How important is it that a virus on a student device CANNOT reach staff computers or college servers?  ","Would you support a system that increases security checks automatically when you move from a secure area (office) to a public area (cafeteria, corridor)?  ","How confident are you that student devices are currently isolated from administrative servers?  ","What percentage of your daily work involves manually configuring switches or routers using command-line (CLI)?  ","How many hours per week do you spend manually troubleshooting network connection issues?  ","Can you currently identify exactly which lab or department is causing network slowdowns?  ","Rank these future AI features from most to least important for Tumba College (1 = Most important) [Self-healing (auto-rerouting on failure)]","Rank these future AI features from most to least important for Tumba College (1 = Most important) [Anomaly detection (AI catches attacks early)]","Rank these future AI features from most to least important for Tumba College (1 = Most important) [Visual dashboard (control all network from one screen)]","Rank these future AI features from most to least important for Tumba College (1 = Most important) [Dynamic slicing (create a private virtual network for one lab on demand)]","How much time do you think an intelligent SDN system could save your team per week?  ","How long does it typically take you to manually resolve a network fault after it is reported? Describe what that process looks like.","What tools or methods do you currently use to monitor the network? Are they effective?","Describe the most common and frustrating network problem you deal with every week.","If the new intelligent SDN system could automate one part of your daily work, what would you want it to handle first?","Imagine a ""magic button"" that instantly fixes your biggest network problem at Tumba College. What would it do? ","Describe a specific time when the college network directly affected your studies or work. What happened and how did it impact you?","Which college online services do you struggle to access the most and why?","Right now the network is slow and unreliable. Because of that, you are probably avoiding certain activities or doing things differently. If the network was perfect  what would you start doing that you currently cannot do?  ","Any other comments, suggestions, or network problems you'd like the design team to know about?  ","Describe how network problems have affected your teaching. Give a specific example if possible.","Which teaching activities suffer the most because of poor network performance and why?","What network capability would most improve the quality of your lessons and student experience?","Any other comments, suggestions, or network problems you'd like the design team to know about?  ","How does network downtime affect your daily administrative work? Give a specific example.","Which administrative systems or tasks are most disrupted by poor network and what is the impact on your work?","What one improvement to the college network would make the biggest difference to your daily work?","Any other comments, suggestions, or network problems you'd like the design team to know about?  ","",""
+"2026/04/29 1:28:03 AM GMT+3","danieltn889@gmail.com","Student","Networking Lab","Personal laptop;Lab desktop PC;Smartphone","Research;Downloading study materials;Online exams and study;Other","Every day","Very slow internet during class time;Files take too long to upload or download;Network disconnects without warning","More than 5 hours","2","2","3","","Everyone gets equal speed, even if it's slow","3","Up to 5 minutes","A network that detects and fixes problems before users notice;AI that predicts network problems and fixes them automatically","","Absolutely mandatory","No, it's too intrusive","3","Option 5","More than 5 hours","No, we cannot tell","2","2","2","2","Not sure","","","","","","","","","nothing","","","","","","","","","No","To automete those"
+"2026/04/29 1:42:37 AM GMT+3","sarahniyigena30@gmail.com","Student","Library","Personal laptop;Lab desktop PC;Smartphone","Research;Downloading study materials;Social media;Online exams and study","Every day","Very slow internet during class time;Cannot connect to the network;Cannot access college systems (MIS, email);Files take too long to upload or download;Network disconnects without warning","More than 5 hours","2","4","4","","Staff/Admin always get priority, students get what's left","2","Instantly (under 1 second)","A network that detects and fixes problems before users notice","","Absolutely mandatory","Yes, definitely","3","More than half is manual (50–90%)","1–3 hours","Sometimes, with difficulty","2","3","3","2","3–5 hours","","","","","","","","","courage","","","","","","","","","No","netwwork down"
+"2026/04/29 3:21:43 AM GMT+3","operationstudylearning@gmail.com","Student","Networking Lab","Personal laptop;Lab desktop PC;Smartphone;Other","Research;Downloading study materials;Administrative systems (MIS, HR,E-learning);Social media;Online exams and study;Online Class;Other","Every day","Very slow internet during class time;Cannot connect to the network;Cannot access college systems (E-Learning, email,AIS,MIS);Files take too long to upload or download;Network disconnects without warning","More than 5 hours","4","3","5 – Excellent","The network connection was too slow when i were accessing my e-learning during assessment time, that time when network cuted off i tried to find other alternative to make the network high throughput (speed). it affect my studie because it makes me to lose marks , attention during study time when it is online.","The AI decides based on time of day","5","Under 1 minute","A network that detects and fixes problems before users notice;AI that predicts network problems and fixes them automatically","Student","Absolutely mandatory","Yes, definitely","4","","","","","","","","","","","","","","when i am in doing online exam, so when the network is working slowly, it makes the me to lose thier consistency,focus.","E-learning exam,onlline exam","performing research, watching online tutorial","please the network should be cared, and priotized when the special task that are being performed","","","","","","","","","",""
+"2026/04/29 9:41:22 AM GMT+3","uwayiedissa@gmail.com","Student","Networking Lab","Personal laptop;Smartphone","Research;Downloading study materials;Social media;Cloud storage;Online Class","A few times per week","Very slow internet during class time;Cannot connect to the network;Files take too long to upload or download","More than 5 hours","3","2","3","The worst network problem I experienced at Tumba College happened during my final year project when I was trying to research and upload my work online. The internet became very slow and kept disconnecting, making it hard to open websites or send files. This delayed my work and made me miss some deadlines, and at one point I even lost some unsaved data. To continue, I had to use mobile data and work at times when the network was less busy, but it was stressful and affected my studies.","Labs and research get priority, social media is restricted","4","Under 1 minute","A network that detects and fixes problems before users notice;100% protection of student and staff data from hackers and viruses","Student","Very important","Yes, as long as it doesn't slow me down","3","","","","","","","","","","","","","","One time, I was trying to submit my assignment before the deadline, but the college network was very slow and kept disconnecting. Because of that, my work did not upload on time, and I almost missed the submission. It made me stressed and affected my performance.","I mostly struggle to access the student portal and e-learning systems because they take too long to load or sometimes fail to open. This happens because the network is slow and not stable.","If the network was fast and reliable, I would attend online classes smoothly, download learning materials quickly, do research without delays, and submit assignments on time without stress.","The college should improve internet speed, increase bandwidth, and make the network more stable. They can also add more access points so students can connect easily from anywhere on campus.","","","","","","","","","",""
+"2026/04/29 10:55:40 AM GMT+3","emmyzoo238@gmail.com","Student","Class","Personal laptop;Smartphone","Research","Rarely","Very slow internet during class time;Files take too long to upload or download;Network disconnects without warning","1–3 hours","4","4","3","One of the worst network problems I experienced at Tumba College happened during an assignment submission deadline. It was in the evening, just a few hours before the due time, and I was trying to upload my completed project to the online learning platform. Unfortunately, the internet connection was extremely unstable—disconnecting frequently and running very slowly when it did work. Each time I attempted to upload my file, it either failed or froze midway.
+
+This situation caused a lot of stress and disrupted my work significantly. Instead of reviewing and improving my assignment, I spent most of the time struggling with connectivity issues. I almost missed the deadline, and it affected my confidence and productivity. It also made it difficult to communicate with classmates or access additional resources, showing how important a reliable network is for academic success.","Everyone gets equal speed, even if it's slow","3","Under 1 minute","A network that detects and fixes problems before users notice;AI that predicts network problems and fixes them automatically","Student","Absolutely mandatory","Yes, definitely","3","","","","","","","","","","","","","","During an assignment submission, the internet was very slow and kept disconnecting, causing upload failures. This almost made me miss the deadline and created stress, reducing my productivity.","I struggle most with the learning platform and online library because they load slowly or fail to open due to unstable internet, especially during peak hours.","I would attend online classes smoothly, use cloud tools, watch educational videos without buffering, and submit assignments without worrying about failures.","The college should improve Wi-Fi stability, increase bandwidth during busy times, and ensure strong coverage in all areas, including classrooms and hostels.","","","","","","","","","",""
+"2026/04/29 11:14:00 AM GMT+3","irankundajohnson@gmail.com","ICT / Technical Staff","Staff Office (Staff LAN)","Personal laptop","Research;Administrative systems (MIS, HR,E-learning);Cloud storage","","","","","","","","","","","","","","","","More than half is manual (50–90%)","1–3 hours","No, we cannot tell","2","2","1","1","Not sure","30 Minutes for troubleshooting.","Pfsence and ","Users issue for internet access ","It’s not possible but if SDN they will improve infrastructure of the campus all issues will be handled . "," Recovering network setup and configuration ","Reporting the Assignment or quizzes for students and  daily Work for staff  at late times ","N/A","N/A","N/A","","","","","","","","","",""
+"2026/04/29 11:35:50 AM GMT+3","niyevar85@gmail.com","Student","Class","Personal laptop;Smartphone","Research;Downloading study materials;Online exams and study","Every day","Very slow internet during class time;Cannot connect to the network;Files take too long to upload or download;Network disconnects without warning","1–3 hours","3","3","3","I was doing a quiz in e-learning, and the network was going extremely too slow, and I ended up loosing marks due to timeout ","Labs and research get priority, social media is restricted","4","Under 1 minute","A network that detects and fixes problems before users notice;AI that predicts network problems and fixes them automatically","Student","Absolutely mandatory","Yes, definitely","3","","","","","","","","","","","","","","From 16h to 20h","E-learning ","Attend class everyday","Restrict social media or give them less priority ","","","","","","","","","",""
+"2026/04/29 4:38:29 PM GMT+3","kokonibyo16@gmail.com","Academic Staff (Lecturer / Instructor)","Staff Office (Staff LAN)","Personal laptop;Lab desktop PC;Smartphone","Research;Downloading study materials;Administrative systems (MIS, HR,E-learning);Video lectures;Social media;Online Class;Other","Every day","Very slow internet during class time;Cannot connect to the network;Video lectures buffer or freeze;Cannot access college systems (E-Learning, email,AIS,MIS);Files take too long to upload or download;Network disconnects without warning","3–5 hours","3","2","3","During my networking practical exam in March, the internet went down completely in the IT Lab. I was trying to submit my practical work online with 5 minutes remaining. Because of the failure I could not submit on time and the lecturer could not help because the whole lab was affected.","The AI decides based on time of day","5","Under 10 seconds","A network that detects and fixes problems before users notice;100% protection of student and staff data from hackers and viruses","Administrative Staff","Absolutely mandatory","Yes, definitely","5","","","","","","","","","","","","","","","","","","","","","","Every time the network goes down I cannot process student fees or update records in the MIS system. Last month during end of semester the network failed for three hours. Students were queuing at the office but we could not help anyone because all our systems were offline. We had to send everyone away and ask them to come back the next day.","The MIS and finance systems are the most affected. When the network is slow we cannot process student payments or print receipts. Students get angry and leave without paying. At the end of the day our records do not balance and we spend extra hours fixing errors manually.","The one improvement I need most is a stable connection to the MIS system during the entire working day from 8 AM to 5 PM. Right now it disconnects at least three times every afternoon and we lose unsaved work every time","Every end of semester during student registration the network completely collapses because too many people are connected at the same time. We end up doing everything manually on paper and then entering it again later. This causes a lot of errors and extra work for the whole admin team.","",""
+"2026/04/29 4:46:49 PM GMT+3","twesehamwe2050@gmail.com","Administrative Staff","Staff Office (Staff LAN)","Personal laptop;Lab desktop PC;Smartphone;Other","Research;Administrative systems (MIS, HR,E-learning);Social media;Other","A few times per week","Cannot connect to the network;Cannot access college systems (E-Learning, email,AIS,MIS);Files take too long to upload or download;Network disconnects without warning;No problems experienced","3–5 hours","3","2","3","The worst network problem I ever faced at 
+Tumba College happened during the end of 
+semester student registration period in 
+March 2024.
+
+I was trying to process fee payments and 
+update student records in the MIS system. 
+More than 50 students were queuing outside 
+the finance office waiting to be registered 
+for the new semester.
+
+Suddenly the network went completely down 
+at 9 AM and did not come back until 3 PM. 
+We could not access the MIS system, process 
+any payments, print receipts, or send 
+confirmation emails to students.
+
+We had to send all the students away and 
+ask them to come back the next day. Some 
+students had travelled from far away and 
+could not come back. Three students almost 
+missed their semester registration deadline 
+because of this.
+
+At the end of the day we had to manually 
+record everything on paper and then spend 
+two extra days entering all the data into 
+the system again. This caused errors in 
+student records that took weeks to fix.
+
+This situation was completely avoidable 
+if the network had a backup system that 
+automatically switches on when the main 
+connection fails.","The AI decides based on time of day","3","Under 1 minute","A network that detects and fixes problems before users notice;AI that predicts network problems and fixes them automatically","Administrative Staff","Absolutely mandatory","Yes, definitely","5","","","","","","","","","","","","","","","","","","","","","","Network downtime affects my daily 
+administrative work in a very serious way. 
+Almost every important task I do depends 
+on the network being available and stable.
+
+For example, last semester during the 
+staff payroll processing week, the network 
+went down every afternoon between 1 PM 
+and 3 PM for three consecutive days. 
+
+I was trying to update staff salary records 
+and process monthly payments through the 
+college finance system. Every time the 
+network disconnected, the system logged 
+me out automatically and I lost all the 
+data I had entered since my last save.
+
+By the third day I had to stay until 
+7 PM just to finish work that should 
+have taken two hours in the morning. 
+Two staff members received wrong payment 
+amounts that month because of data entry 
+errors caused by the repeated disconnections.
+
+Other tasks that are affected every day 
+include sending official emails to students 
+and parents, printing admission letters, 
+accessing student attendance records, and 
+updating the HR system.
+
+When the network is down none of these 
+tasks can be done and everything piles 
+up. By the time the network comes back 
+we are so far behind that we end up 
+making mistakes just to catch up.","The administrative systems and tasks that 
+are most disrupted by poor network at 
+Tumba College are the following:
+
+The first and most critical is the MIS 
+system. This is the system we use for 
+everything including student registration, 
+fee payments, exam results, and academic 
+records. When the network is slow the MIS 
+system takes more than 5 minutes to load 
+a single page. When the network goes down 
+completely we cannot access it at all and 
+all administrative work stops immediately.
+
+The second is the Finance and Payroll 
+system. Processing student fee payments 
+and staff salaries requires a stable 
+connection. When the network is unstable 
+the system freezes in the middle of 
+transactions. This has caused duplicate 
+payments and missing records several 
+times this year alone.
+
+The third is our official email system. 
+Most communication with students, parents, 
+and external organizations is done through 
+email. When the network is poor emails 
+take hours to send or are lost completely. 
+Students miss important deadlines and 
+announcements because of this.
+
+The fourth is the printing and document 
+sharing system. All our printers are 
+connected through the network. When the 
+network goes down we cannot print admission 
+letters, fee receipts, or any official 
+documents. Students queue for hours and 
+leave without being served.
+
+The overall impact on my work is that 
+I spend more time fixing errors and 
+redoing work than actually doing my 
+job. My productivity drops by at least 
+50% on days when the network is unstable 
+and the stress on the entire admin team 
+is very high.","The one improvement that would make the 
+biggest difference to my daily work is 
+a guaranteed stable network connection 
+for all administrative systems during 
+the entire working day from 8 AM to 5 PM.
+
+Right now the network is completely 
+unpredictable. Some days it works well 
+in the morning and then completely fails 
+in the afternoon. Other days it is slow 
+all day long. We never know what to expect 
+and we cannot plan our work around it.
+
+If the new intelligent network could 
+guarantee that the MIS system, Finance 
+system, and email are always available 
+and fast during working hours no matter 
+how many students are connected to the 
+Student Wi-Fi at the same time, it would 
+completely transform how our office works.
+
+We would be able to serve students faster, 
+process payments without errors, meet 
+deadlines, and reduce the stress on the 
+entire administrative team.
+
+We would no longer need to come in early 
+or stay late just to finish basic tasks 
+that the network prevented us from 
+completing during normal working hours.
+
+In summary, I do not need the fastest 
+network in the world. I just need a 
+network that works reliably every single 
+day without interruption so that I can 
+do my job properly and serve the students 
+and staff of Tumba College effectively.","I would like the design team to know 
+that the problems we face in the 
+administrative block are not just 
+technical problems. They are human 
+problems that affect real people 
+every single day.
+
+When the network fails during student 
+registration week, it is not just 
+an inconvenience. Students who have 
+travelled long distances to register 
+are turned away. Parents who have 
+sacrificed to pay school fees cannot 
+get their receipts. Staff members who 
+are trying their best to serve everyone 
+feel helpless and embarrassed.
+
+I would also like the design team to 
+know that the network in the administrative 
+block is completely separate from the 
+rest of the campus in terms of problems. 
+Our block experiences power fluctuations 
+that reset the network equipment at 
+least twice a week. Every time this 
+happens we have to call the ICT office 
+and wait for someone to come and 
+manually restart the equipment.
+
+I would strongly suggest that the new 
+intelligent system includes an automatic 
+restart and recovery feature so that 
+when equipment fails it comes back 
+online by itself without waiting for 
+ICT staff to physically come to our 
+office.
+
+I would also suggest that the design 
+team considers giving administrative 
+staff a separate dedicated network 
+connection that is completely isolated 
+from the student network. This way 
+even when hundreds of students are 
+downloading files or watching videos 
+our systems will not be affected.
+
+Finally I want to say that I am very 
+happy that someone is finally taking 
+this problem seriously and designing 
+a solution specifically for Tumba 
+College. I hope the findings of this 
+survey are used to build something 
+that truly works for all of us.","",""
+"2026/04/29 5:05:11 PM GMT+3","didierishimwe221@gmail.com","Student","Class","Personal laptop;Smartphone","Research;Downloading study materials;Social media","A few times per week","Very slow internet during class time;Cannot access college systems (E-Learning, email,AIS,MIS);Files take too long to upload or download;Network disconnects without warning","More than 5 hours","3","3","5 – Excellent","The worst network problem I faced at Tumba College happened during an online class when I was trying to access study materials and join a live session. The internet was very slow and kept disconnecting. This made me miss important explanations from the lecturer and delayed my assignment submission, which affected my understanding and performance.","Labs and research get priority, social media is restricted","3","Under 10 seconds","A network that detects and fixes problems before users notice;Connecting lab equipment, cameras, and sensors to one smart system (IoT)","Student","Very important","Yes, definitely","3","","","","","","","","","","","","","","One time, I was submitting an assignment online close to the deadline, but the college network suddenly became very slow and kept disconnecting. The page wouldn’t load properly, and my upload kept failing. Because of this, I submitted late, which affected my marks and caused a lot of stress.","I struggle most with accessing the college e-learning platform and online library. They are often slow to load or fail to open, especially during busy hours. This makes it hard to download notes, submit assignments, or do research on time.","Right now, because the network is slow, I avoid joining live online classes, downloading large study materials, and uploading assignments at the last minute. If the network was perfect, I would attend all live sessions without interruption, easily access and download resources, submit work on time, and do more online research without delays.","The network is especially slow during peak hours, which affects many students at the same time. It would help to increase bandwidth and improve stability across campus. Also, expanding Wi-Fi coverage to all areas, including hostels and study spaces, would make access more reliable. Regular maintenance and quick response to outages would also improve the overall experience.","","","","","","","","","",""
+"2026/04/29 5:22:45 PM GMT+3","aimeniyoyabikoze2000@gmail.com","Student","Class","Personal laptop;Tablet","Research;Downloading study materials;Administrative systems (MIS, HR,E-learning)","Every day","Very slow internet during class time;Cannot connect to the network","1–3 hours","3","1 – Very poor","3","afternoon while i'm trying to access E-learning","Staff/Admin always get priority, students get what's left","2","Under 10 seconds","A network that detects and fixes problems before users notice","Student","Not a priority","Yes, definitely","3","","","","","","","","","","","","","","every day we stacked because of network while we are studying","elearning","searching","we need network which is stable and able to serve whole campus","","","","","","","","","",""
+"2026/04/29 5:45:42 PM GMT+3","twahirwafabrice12@gmail.com","ICT / Technical Staff","Networking Lab","Personal laptop;Lab desktop PC;Smartphone;Tablet","Research;Downloading study materials;Administrative systems (MIS, HR,E-learning);Video lectures;Social media;Online exams and study;Online Class","","","","","","","","","","","","","","","","More than half is manual (50–90%)","3–5 hours","Yes, we have tools for that","3","3","3","3","More than 5 hours","3. Hours ","Wireshark ","Old version device ","Yes ","Used new device and generation ","Take long time for search ","eLearning ","I can you use to study and download software for learning ","Use new network device and 5g","","","","","","","","","",""
+"2026/04/29 6:30:40 PM GMT+3","davidniyonkuru749@gmail.com","Student","Class","Personal laptop;Smartphone","Research;Downloading study materials;Administrative systems (MIS, HR,E-learning);Online exams and study;Online Class","A few times per week","Very slow internet during class time;Cannot connect to the network;Cannot access college systems (E-Learning, email,AIS,MIS);Files take too long to upload or download;Network disconnects without warning","More than 5 hours","2","2","2","it connected , but no internet ","Labs and research get priority, social media is restricted","3","Instantly (under 1 second)","A network that detects and fixes problems before users notice;Connecting lab equipment, cameras, and sensors to one smart system (IoT)","Student","Very important","Yes, definitely","5","","","","","","","","","","","","","","in study time , we loss internet while we are downloading some file like  OS server ","e-learning ","simply accessing the internet to seamless, real-time immersion","NO COMMENT ","","","","","","","","","",""
+"2026/04/30 11:34:39 AM GMT+3","niyokwizerwajo2002@gmail.com","Student","Class","Personal laptop","Research;Downloading study materials;Administrative systems (MIS, HR,E-learning);Online Class","A few times per week","Very slow internet during class time;Cannot connect to the network;Cannot access college systems (E-Learning, email,AIS,MIS);Network disconnects without warning","More than 5 hours","3","2","1 – Very poor","Network goes slowly while I was trying to find dataset for my capstone project It happens every day so that in detail network issue in Tumba is a big problem for us couse even where there are a good network we didn't have access to go there ","Everyone gets equal speed, even if it's slow","3","Under 1 minute","A network that detects and fixes problems before users notice;AI that predicts network problems and fixes them automatically","Student","Very important","Yes, as long as it doesn't slow me down","3","","","","","","","","","","","","","","At 15h-22h network fail to work on my activities","Many","I start to perform my academic task early and finish my capstone early ","Enough ","","","","","","","","","",""

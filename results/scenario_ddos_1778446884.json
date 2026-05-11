@@ -1,0 +1,30 @@
+{
+  "scenario": "ddos",
+  "label": "DDoS Attack",
+  "started_at_ms": 1778446849039,
+  "duration_s": 30,
+  "convergence_time_ms": null,
+  "security_response_time_ms": 0.0,
+  "throughput_before_mbps": 63.0,
+  "throughput_after_mbps": 63.0,
+  "reroute_triggered": false,
+  "throttle_triggered": true,
+  "ddos_blocked": 1,
+  "slo_violations": 0,
+  "dqn_reward": null,
+  "zones": {
+    "wifi": {
+      "mbps_peak": 373.3333333333333,
+      "mbps_normal": 63.0
+    },
+    "core": {
+      "mbps_peak": 206.0
+    }
+  },
+  "success": false,
+  "notes": [
+    "DDoS attack launched: h_wifi1 \u2192 10.0.0.100",
+    "Student throttle activated",
+    "Security response: 0.0ms"
+  ]
+}

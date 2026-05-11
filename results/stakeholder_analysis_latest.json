@@ -1,0 +1,670 @@
+{
+  "artifacts": {
+    "dqn_policy_file": "/tmp/sdn_patrick/campus_dqn_policy.json",
+    "manual_settings_file": "/tmp/sdn_patrick/campus_manual_settings.json",
+    "report_json": "/tmp/sdn_patrick/campus_stakeholder_report.json",
+    "report_md": "/home/patrick/Desktop/campus-sdn/results/stakeholder_analysis_latest.md",
+    "security_policy_file": "/tmp/sdn_patrick/campus_security_policy.json"
+  },
+  "data_mining": {
+    "correlation_findings": {
+      "cloud_priority_vs_latency_tolerance": {
+        "interpretation": "Cloud-priority users tolerate 100s link failure vs 15s for others (r=0.55). Weak or no correlation in this sample.",
+        "mean_tolerance_s_cloud_users": 100.0,
+        "mean_tolerance_s_non_cloud_users": 15.3,
+        "n_cloud_users": 6,
+        "n_non_cloud_users": 6,
+        "pearson_r": 0.5465
+      },
+      "isolation_importance_vs_afternoon_quality": {
+        "interpretation": "r=0.60: Positive or neutral correlation in this sample.",
+        "n": 12,
+        "pearson_r": 0.5963
+      },
+      "troubleshoot_hours_vs_avg_quality": {
+        "interpretation": "r=-1.00: More hours spent on manual troubleshooting correlates with lower perceived network quality, validating the need for automated SDN-based management.",
+        "n": 2,
+        "pearson_r": -1.0
+      }
+    },
+    "kmeans_traffic_clusters": [
+      {
+        "avg_quality_afternoon": 1.8,
+        "cluster_id": 0,
+        "dominant_usage": "research/downloads",
+        "member_count": 6,
+        "respondent_roles": {
+          "academic staff lecturer instructor": 1,
+          "administrative staff": 1,
+          "ict technical staff": 1,
+          "student": 3
+        },
+        "traffic_profile": "70% MIS/admin workflows, 30% general web",
+        "zone_label": "Staff LAN \u2013 Administrative Workflows"
+      },
+      {
+        "avg_quality_afternoon": 3.5,
+        "cluster_id": 1,
+        "dominant_usage": "research/downloads",
+        "member_count": 2,
+        "respondent_roles": {
+          "student": 2
+        },
+        "traffic_profile": "60% streaming + social, 40% e-learning access",
+        "zone_label": "Student Wi-Fi \u2013 Streaming / Browsing"
+      },
+      {
+        "avg_quality_afternoon": 2.8,
+        "cluster_id": 2,
+        "dominant_usage": "research/downloads",
+        "member_count": 6,
+        "respondent_roles": {
+          "ict technical staff": 1,
+          "student": 5
+        },
+        "traffic_profile": "80% encrypted file transfers, 20% e-learning",
+        "zone_label": "IT Lab \u2013 Encrypted Transfers"
+      }
+    ],
+    "time_series_peaks": {
+      "avg_freq_score": 0.786,
+      "avg_quality_afternoon": 2.5,
+      "avg_quality_evening": 3.17,
+      "avg_quality_morning": 2.92,
+      "dqn_pre_allocation_recommendation": "Activate adaptive policy at 12:45 to pre-empt 13:00 congestion surge",
+      "hardware_limit_threshold": 0.7,
+      "hourly_congestion_profile": [
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 3.5,
+          "congestion_probability": 0.295,
+          "hour": "07:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.92,
+          "congestion_probability": 0.409,
+          "hour": "08:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.92,
+          "congestion_probability": 0.409,
+          "hour": "09:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.92,
+          "congestion_probability": 0.409,
+          "hour": "10:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.92,
+          "congestion_probability": 0.409,
+          "hour": "11:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 3.61,
+          "congestion_probability": 0.273,
+          "hour": "12:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.5,
+          "congestion_probability": 0.491,
+          "hour": "13:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.5,
+          "congestion_probability": 0.491,
+          "hour": "14:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.5,
+          "congestion_probability": 0.491,
+          "hour": "15:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 2.5,
+          "congestion_probability": 0.491,
+          "hour": "16:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 3.33,
+          "congestion_probability": 0.328,
+          "hour": "17:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 3.17,
+          "congestion_probability": 0.36,
+          "hour": "18:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 3.17,
+          "congestion_probability": 0.36,
+          "hour": "19:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 3.17,
+          "congestion_probability": 0.36,
+          "hour": "20:00"
+        },
+        {
+          "above_hardware_limit": false,
+          "avg_quality_score": 4.0,
+          "congestion_probability": 0.196,
+          "hour": "21:00"
+        }
+      ],
+      "peak_hours": [],
+      "peak_minutes_per_day_estimate": 0,
+      "worst_30_min_window": "13:00\u201314:00",
+      "worst_hour": "13:00"
+    }
+  },
+  "derived_policy": {
+    "controller_thresholds": {
+      "congest_high_mbps": 36.16,
+      "congest_low_mbps": 20.25,
+      "port_congest_high_pct": 71.68,
+      "port_congest_low_pct": 56.68,
+      "priority_mode": "academic_first",
+      "response_count": 14,
+      "source": "stakeholder_requirements_csv"
+    },
+    "dqn_policy": {
+      "preferred_thresholds": {
+        "congest_high_mbps": 36.16,
+        "congest_low_mbps": 20.25,
+        "port_congest_high_pct": 71.68,
+        "port_congest_low_pct": 56.68,
+        "priority_mode": "academic_first",
+        "response_count": 14,
+        "source": "stakeholder_requirements_csv"
+      },
+      "response_count": 14,
+      "reward_weights": {
+        "avg_util_penalty": 0.588,
+        "congestion_penalty": 0.583,
+        "healthy_state_bonus": 0.427,
+        "latency_penalty": 0.375,
+        "low_latency_bonus": 0.273,
+        "max_util_penalty": 0.997,
+        "queue_pressure_penalty": 0.27,
+        "volatility_penalty": 0.05
+      },
+      "source": "stakeholder_requirements_csv",
+      "stakeholder_bias": {
+        "preferred_mode": "academic_first",
+        "priority_order": [
+          "laboratory_block",
+          "staff_lan",
+          "student_wifi"
+        ],
+        "protect_labs": true,
+        "protect_staff_lan": true
+      },
+      "targets": {
+        "latency_ms": 20.0,
+        "max_util_pct": 65.0,
+        "queue_pressure_pct": 60.67
+      },
+      "threshold_bounds": {
+        "max_high_mbps": 120.0,
+        "max_port_high_pct": 95.0,
+        "min_high_mbps": 28.0,
+        "min_low_mbps": 12.0,
+        "min_port_high_pct": 55.0
+      }
+    },
+    "priority_model": {
+      "mode_breakdown": [
+        {
+          "count": 4,
+          "label": "academic_first"
+        },
+        {
+          "count": 3,
+          "label": "equal_fairness"
+        },
+        {
+          "count": 3,
+          "label": "time_aware"
+        },
+        {
+          "count": 2,
+          "label": "staff_first"
+        }
+      ],
+      "preferred_mode": "academic_first",
+      "zone_priority_order": [
+        "laboratory_block",
+        "staff_lan",
+        "student_wifi"
+      ],
+      "zone_priority_share_pct": {
+        "laboratory_block": 42.4,
+        "staff_lan": 37.5,
+        "student_wifi": 20.1
+      }
+    },
+    "security_policy": {
+      "allow_icmp_to_servers": true,
+      "allowed_server_tcp_ports": [
+        80,
+        443,
+        8008,
+        8080,
+        8088,
+        8443,
+        9443,
+        5201,
+        5202,
+        5203,
+        5204
+      ],
+      "allowed_server_udp_ports": [
+        67,
+        68,
+        1812,
+        1813,
+        5204
+      ],
+      "block_zone_pairs": [
+        {
+          "dst_zone": "staff_lan",
+          "reason": "Survey respondents requested strict separation between public/student devices and staff assets.",
+          "src_zone": "student_wifi"
+        },
+        {
+          "dst_zone": "staff_lan",
+          "reason": "Lab endpoints should not laterally reach staff systems without an explicit approved service path.",
+          "src_zone": "it_lab"
+        },
+        {
+          "dst_zone": "staff_lan",
+          "reason": "Networking lab devices are treated as semi-open research endpoints and are isolated from staff assets.",
+          "src_zone": "network_lab"
+        }
+      ],
+      "drop_hard_timeout_s": 300,
+      "drop_idle_timeout_s": 120,
+      "drop_priority": 360,
+      "enabled": true,
+      "protected_server_ips": [
+        "10.0.0.100",
+        "10.0.0.101"
+      ],
+      "protected_staff_ips": [
+        "10.0.0.31",
+        "10.0.0.32"
+      ],
+      "response_count": 14,
+      "restricted_source_zones": [
+        "student_wifi",
+        "it_lab",
+        "network_lab"
+      ],
+      "source": "stakeholder_requirements_csv"
+    }
+  },
+  "executive_summary": {
+    "peak_issue_density": 0.875,
+    "preferred_policy_mode": "academic_first",
+    "priority_order": [
+      "laboratory_block",
+      "staff_lan",
+      "student_wifi"
+    ],
+    "security_isolation_ratio": 0.917,
+    "top_issue_labels": [
+      "Very slow internet during class time",
+      "Files take too long to upload or download",
+      "Network disconnects without warning",
+      "Cannot connect to the network",
+      "Cannot access college systems (E-Learning, email,AIS,MIS)",
+      "Cannot access college systems (MIS, email)"
+    ],
+    "worst_time_score": 2.5,
+    "worst_time_window": "afternoon"
+  },
+  "gap_analysis": [
+    {
+      "area": "Traffic control",
+      "current_state": "Reactive and manual congestion handling during peak academic periods.",
+      "proposed_state": "Survey-tuned thresholds activate earlier and protect priority segments automatically."
+    },
+    {
+      "area": "Security isolation",
+      "current_state": "Stakeholders are uncertain that student/public devices are isolated from protected assets.",
+      "proposed_state": "Cross-zone access policy blocks student/lab lateral movement into Staff LAN and limits server exposure to approved ports."
+    },
+    {
+      "area": "Operations visibility",
+      "current_state": "ICT staff still rely on manual troubleshooting and limited visibility into the noisy segment.",
+      "proposed_state": "Dashboard + controller telemetry + DQN policy file provide a single adaptive control loop."
+    },
+    {
+      "area": "Service quality",
+      "current_state": "Afternoon quality is the weakest period, with repeated complaints around e-learning and uploads.",
+      "proposed_state": "Adaptive routing, shaping, and stakeholder-weighted latency targets prioritize protected services during the worst window."
+    }
+  ],
+  "generated_at": "2026-05-11 15:42:55 CAT",
+  "source_csv": "/home/patrick/Desktop/campus-sdn/Stakeholder Requirement Survey Intelligent SDN Project .csv",
+  "survey_summary": {
+    "adaptive_security_breakdown": [
+      {
+        "count": 9,
+        "label": "Yes, definitely"
+      },
+      {
+        "count": 2,
+        "label": "Yes, as long as it doesn't slow me down"
+      },
+      {
+        "count": 1,
+        "label": "No, it's too intrusive"
+      }
+    ],
+    "area_breakdown": [
+      {
+        "count": 6,
+        "label": "Class"
+      },
+      {
+        "count": 4,
+        "label": "Networking Lab"
+      },
+      {
+        "count": 3,
+        "label": "Staff Office (Staff LAN)"
+      },
+      {
+        "count": 1,
+        "label": "Library"
+      }
+    ],
+    "congestion_policy_breakdown": [
+      {
+        "count": 4,
+        "label": "Labs and research get priority, social media is restricted"
+      },
+      {
+        "count": 3,
+        "label": "Everyone gets equal speed, even if it's slow"
+      },
+      {
+        "count": 3,
+        "label": "The AI decides based on time of day"
+      },
+      {
+        "count": 2,
+        "label": "Staff/Admin always get priority, students get what's left"
+      }
+    ],
+    "critical_service_mentions": [
+      {
+        "count": 14,
+        "label": "e_learning"
+      },
+      {
+        "count": 14,
+        "label": "research_downloads"
+      },
+      {
+        "count": 11,
+        "label": "mis_admin"
+      },
+      {
+        "count": 4,
+        "label": "cloud_sync"
+      },
+      {
+        "count": 4,
+        "label": "video_lectures"
+      }
+    ],
+    "estimated_automation_time_saved_hours_avg": 5.0,
+    "future_technology_breakdown": [
+      {
+        "count": 12,
+        "label": "A network that detects and fixes problems before users notice"
+      },
+      {
+        "count": 6,
+        "label": "AI that predicts network problems and fixes them automatically"
+      },
+      {
+        "count": 2,
+        "label": "100% protection of student and staff data from hackers and viruses"
+      },
+      {
+        "count": 2,
+        "label": "Connecting lab equipment, cameras, and sensors to one smart system (IoT)"
+      }
+    ],
+    "isolation_confidence_avg": 3.583,
+    "keyword_hotspots": [
+      {
+        "count": 13,
+        "label": "online"
+      },
+      {
+        "count": 8,
+        "label": "e-learning"
+      },
+      {
+        "count": 8,
+        "label": "work"
+      },
+      {
+        "count": 7,
+        "label": "slow"
+      },
+      {
+        "count": 7,
+        "label": "internet"
+      },
+      {
+        "count": 7,
+        "label": "access"
+      },
+      {
+        "count": 7,
+        "label": "student"
+      },
+      {
+        "count": 7,
+        "label": "without"
+      },
+      {
+        "count": 7,
+        "label": "students"
+      },
+      {
+        "count": 6,
+        "label": "submit"
+      },
+      {
+        "count": 6,
+        "label": "completely"
+      },
+      {
+        "count": 5,
+        "label": "research"
+      }
+    ],
+    "manual_cli_workload_indicator": 53.75,
+    "manual_troubleshooting_hours_avg": 3.5,
+    "predictive_scaling_avg": 3.333,
+    "quality_scores": {
+      "afternoon": 2.5,
+      "evening": 3.167,
+      "morning": 2.917
+    },
+    "response_count": 14,
+    "role_breakdown": [
+      {
+        "count": 10,
+        "label": "Student"
+      },
+      {
+        "count": 2,
+        "label": "ICT / Technical Staff"
+      },
+      {
+        "count": 1,
+        "label": "Academic Staff (Lecturer / Instructor)"
+      },
+      {
+        "count": 1,
+        "label": "Administrative Staff"
+      }
+    ],
+    "security_isolation_breakdown": [
+      {
+        "count": 7,
+        "label": "Absolutely mandatory"
+      },
+      {
+        "count": 4,
+        "label": "Very important"
+      },
+      {
+        "count": 1,
+        "label": "Not a priority"
+      }
+    ],
+    "stakeholder_failover_tolerance_s": 60.0,
+    "top_network_uses": [
+      {
+        "count": 14,
+        "label": "Research"
+      },
+      {
+        "count": 11,
+        "label": "Downloading study materials"
+      },
+      {
+        "count": 8,
+        "label": "Administrative systems (MIS, HR,E-learning)"
+      },
+      {
+        "count": 7,
+        "label": "Social media"
+      },
+      {
+        "count": 6,
+        "label": "Online exams and study"
+      },
+      {
+        "count": 6,
+        "label": "Online Class"
+      },
+      {
+        "count": 4,
+        "label": "Other"
+      },
+      {
+        "count": 2,
+        "label": "Cloud storage"
+      },
+      {
+        "count": 2,
+        "label": "Video lectures"
+      }
+    ],
+    "top_problem_breakdown": [
+      {
+        "count": 11,
+        "label": "Very slow internet during class time"
+      },
+      {
+        "count": 10,
+        "label": "Files take too long to upload or download"
+      },
+      {
+        "count": 10,
+        "label": "Network disconnects without warning"
+      },
+      {
+        "count": 9,
+        "label": "Cannot connect to the network"
+      },
+      {
+        "count": 6,
+        "label": "Cannot access college systems (E-Learning, email,AIS,MIS)"
+      },
+      {
+        "count": 1,
+        "label": "Cannot access college systems (MIS, email)"
+      },
+      {
+        "count": 1,
+        "label": "Video lectures buffer or freeze"
+      },
+      {
+        "count": 1,
+        "label": "No problems experienced"
+      }
+    ],
+    "visibility_breakdown": [
+      {
+        "count": 2,
+        "label": "No, we cannot tell"
+      },
+      {
+        "count": 1,
+        "label": "Sometimes, with difficulty"
+      },
+      {
+        "count": 1,
+        "label": "Yes, we have tools for that"
+      }
+    ]
+  },
+  "traffic_profile_matrix": [
+    {
+      "bandwidth_mbps": 100,
+      "future_requirement": "MIS, finance, registration, and staff workflows remain responsive during congestion.",
+      "performance_target": "Latency < 20 ms, packet loss < 1%, uptime 99.9% during admin hours.",
+      "priority": "high",
+      "security": "Strict micro-segmentation from student and lab endpoints.",
+      "zone": "Staff LAN"
+    },
+    {
+      "bandwidth_mbps": 100,
+      "future_requirement": "Online practicals, research downloads, and pre-class bandwidth reservation.",
+      "performance_target": "Latency < 25 ms and predictive bandwidth boost 10 minutes before class.",
+      "priority": "critical",
+      "security": "Allow learning services; block lateral movement into staff assets.",
+      "zone": "Laboratory Block"
+    },
+    {
+      "bandwidth_mbps": 50,
+      "future_requirement": "Stable access to e-learning, online exams, and research portals.",
+      "performance_target": "Latency < 40 ms outside congestion windows; shaped under overload.",
+      "priority": "best_effort_with_protection",
+      "security": "Public-zone posture with extra checks and restricted east-west access.",
+      "zone": "Student Wi-Fi"
+    },
+    {
+      "bandwidth_mbps": 1000,
+      "future_requirement": "Protected delivery of e learning, mis admin, research downloads, video lectures.",
+      "performance_target": "Reachable from all approved zones with failover target <= 10 s.",
+      "priority": "critical",
+      "security": "Only approved ports/services exposed to student and lab clients.",
+      "zone": "Primary Service Zone"
+    }
+  ]
+}

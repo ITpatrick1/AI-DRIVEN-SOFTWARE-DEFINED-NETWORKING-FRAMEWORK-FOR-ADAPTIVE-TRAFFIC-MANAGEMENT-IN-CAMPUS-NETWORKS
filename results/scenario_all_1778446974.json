@@ -1,0 +1,30 @@
+{
+  "scenario": "all",
+  "label": "All Scenarios",
+  "started_at_ms": 1778446879170,
+  "duration_s": 90,
+  "convergence_time_ms": null,
+  "security_response_time_ms": 0.0,
+  "throughput_before_mbps": 154.0,
+  "throughput_after_mbps": 0.0,
+  "reroute_triggered": false,
+  "throttle_triggered": true,
+  "ddos_blocked": 1,
+  "slo_violations": 0,
+  "dqn_reward": null,
+  "zones": {
+    "wifi": {
+      "mbps_peak": 395.55555555555554,
+      "mbps_normal": 154.0
+    },
+    "core": {
+      "mbps_peak": 258.0
+    }
+  },
+  "success": false,
+  "notes": [
+    "All scenarios running simultaneously",
+    "Student throttle activated",
+    "Security response: 0.0ms"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "scenario": "link_failure",
+  "label": "Link Failure",
+  "started_at_ms": 1778450052778,
+  "duration_s": 20,
+  "convergence_time_ms": null,
+  "security_response_time_ms": null,
+  "throughput_before_mbps": 50.0,
+  "throughput_after_mbps": 50.0,
+  "reroute_triggered": false,
+  "throttle_triggered": false,
+  "ddos_blocked": 0,
+  "slo_violations": 0,
+  "dqn_reward": null,
+  "zones": {
+    "wifi": {
+      "mbps_peak": 15.0,
+      "mbps_normal": 50.0
+    },
+    "core": {
+      "mbps_peak": 50.0
+    }
+  },
+  "success": false,
+  "notes": [
+    "Link failure simulated via stress (runtime API unavailable)"
+  ]
+}

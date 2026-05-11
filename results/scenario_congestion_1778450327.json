@@ -1,0 +1,30 @@
+{
+  "scenario": "congestion",
+  "label": "Congestion Flood",
+  "started_at_ms": 1778450275920,
+  "duration_s": 45,
+  "convergence_time_ms": null,
+  "security_response_time_ms": null,
+  "throughput_before_mbps": 50.0,
+  "throughput_after_mbps": 50.0,
+  "reroute_triggered": false,
+  "throttle_triggered": false,
+  "ddos_blocked": 0,
+  "slo_violations": 0,
+  "dqn_reward": null,
+  "zones": {
+    "wifi": {
+      "mbps_peak": 15.0,
+      "mbps_normal": 50.0
+    },
+    "core": {
+      "mbps_peak": 50.0
+    }
+  },
+  "success": false,
+  "notes": [
+    "Failover: 142.4ms",
+    "Failover: 140.5ms",
+    "Failover: 139.6ms"
+  ]
+}

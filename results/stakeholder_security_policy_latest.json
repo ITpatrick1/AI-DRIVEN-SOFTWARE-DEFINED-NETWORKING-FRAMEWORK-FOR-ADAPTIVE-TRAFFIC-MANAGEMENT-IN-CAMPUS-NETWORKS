@@ -1,0 +1,59 @@
+{
+  "allow_icmp_to_servers": true,
+  "allowed_server_tcp_ports": [
+    80,
+    443,
+    8008,
+    8080,
+    8088,
+    8443,
+    9443,
+    5201,
+    5202,
+    5203,
+    5204
+  ],
+  "allowed_server_udp_ports": [
+    67,
+    68,
+    1812,
+    1813,
+    5204
+  ],
+  "block_zone_pairs": [
+    {
+      "dst_zone": "staff_lan",
+      "reason": "Survey respondents requested strict separation between public/student devices and staff assets.",
+      "src_zone": "student_wifi"
+    },
+    {
+      "dst_zone": "staff_lan",
+      "reason": "Lab endpoints should not laterally reach staff systems without an explicit approved service path.",
+      "src_zone": "it_lab"
+    },
+    {
+      "dst_zone": "staff_lan",
+      "reason": "Networking lab devices are treated as semi-open research endpoints and are isolated from staff assets.",
+      "src_zone": "network_lab"
+    }
+  ],
+  "drop_hard_timeout_s": 300,
+  "drop_idle_timeout_s": 120,
+  "drop_priority": 360,
+  "enabled": true,
+  "protected_server_ips": [
+    "10.0.0.100",
+    "10.0.0.101"
+  ],
+  "protected_staff_ips": [
+    "10.0.0.31",
+    "10.0.0.32"
+  ],
+  "response_count": 14,
+  "restricted_source_zones": [
+    "student_wifi",
+    "it_lab",
+    "network_lab"
+  ],
+  "source": "stakeholder_requirements_csv"
+}

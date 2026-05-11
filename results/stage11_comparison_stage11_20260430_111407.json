@@ -1,0 +1,113 @@
+{
+  "adaptive_improves_over_static": {
+    "adaptive_policy_activated": false,
+    "adaptive_reroute_observed": false,
+    "latency_not_worse": true,
+    "packet_delivery_not_worse": true,
+    "static_policy_inactive": true,
+    "throughput_not_worse": false
+  },
+  "after_adaptive": {
+    "congestion_response_s": null,
+    "latency_avg_ms": 5.615,
+    "mode": "after_adaptive",
+    "packet_delivery_pct": 100.0,
+    "packet_loss_pct": 0.0,
+    "pingall_loss_pct": 26.667,
+    "policy_activated_count": 0,
+    "reroute_observed": false,
+    "reroute_packets": 0,
+    "throughput_mbps": 4.194
+  },
+  "before_adaptive": {
+    "congestion_response_s": null,
+    "latency_avg_ms": 6.178,
+    "mode": "before_adaptive",
+    "packet_delivery_pct": 100.0,
+    "packet_loss_pct": 0.0,
+    "pingall_loss_pct": 26.667,
+    "policy_activated_count": 0,
+    "reroute_observed": false,
+    "reroute_packets": 0,
+    "throughput_mbps": 4.613
+  },
+  "benefits": {
+    "latency_reduction_ms": 0.563,
+    "packet_delivery_gain_pct": 0.0,
+    "packet_loss_reduction_pct": 0.0,
+    "response_time_reduction_s": null,
+    "throughput_gain_mbps": -0.419
+  },
+  "controller_thresholds": {
+    "after_adaptive": {
+      "congest_high_mbps": 36.16,
+      "congest_low_mbps": 20.25,
+      "port_congest_high_pct": 71.68,
+      "port_congest_low_pct": 56.68
+    },
+    "before_adaptive": {
+      "congest_high_mbps": 36.16,
+      "congest_low_mbps": 20.25,
+      "port_congest_high_pct": 71.68,
+      "port_congest_low_pct": 56.68
+    }
+  },
+  "evidence_paths": {
+    "after_json": "/home/patrick/mininet/results/adaptive_eval_stage11_20260430_111407_adaptive.json",
+    "before_json": "/home/patrick/mininet/results/adaptive_eval_stage11_20260430_111407_static.json"
+  },
+  "improvements": {
+    "congestion_response_delta_s": null,
+    "latency_delta_ms": -0.563,
+    "packet_delivery_delta_pct": 0.0,
+    "packet_loss_delta_pct": 0.0,
+    "reroute_packet_delta": 0,
+    "throughput_delta_mbps": -0.419
+  },
+  "measurable_project_results": [
+    "Pingall connectivity was preserved in both runs (loss: 26.667% before, 26.667% after).",
+    "Protected-flow throughput under congestion changed from 4.613 Mbps to 4.194 Mbps.",
+    "Packet delivery under congestion changed from 100.0% to 100.0%.",
+    "Average latency under congestion changed from 6.178 ms to 5.615 ms.",
+    "Adaptive response time under congestion was n/a s.",
+    "Reroute evidence packets on the backup path changed from 0 to 0."
+  ],
+  "notes": [
+    "before_adaptive uses very high thresholds so adaptive reroute should remain inactive during the congestion window.",
+    "after_adaptive uses low thresholds so adaptive reroute should activate under congestion.",
+    "reroute_packets > 0 indicates traffic observed on the backup server interface.",
+    "Throughput and latency values are recorded during the congestion window, not only at startup."
+  ],
+  "source_derived_metrics": {
+    "after": {
+      "baseline_packet_delivery_pct": 100.0,
+      "congestion_loss_pct": 0.0,
+      "congestion_packet_delivery_pct": 100.0,
+      "congestion_rtt_avg_ms": 5.615,
+      "latency_delta_ms": -0.038,
+      "reroute_evidence_packets": 0,
+      "reroute_observed": false,
+      "throughput_delta_mbps": -29.143,
+      "throughput_delta_pct": -87.419
+    },
+    "before": {
+      "baseline_packet_delivery_pct": 100.0,
+      "congestion_loss_pct": 0.0,
+      "congestion_packet_delivery_pct": 100.0,
+      "congestion_rtt_avg_ms": 6.178,
+      "latency_delta_ms": 0.143,
+      "reroute_evidence_packets": 0,
+      "reroute_observed": false,
+      "throughput_delta_mbps": -27.676,
+      "throughput_delta_pct": -85.713
+    }
+  },
+  "tag": "stage11_20260430_111407",
+  "test_matrix": {
+    "congestion_test": "Wi-Fi reverse-download stress over a shared bottleneck in both runs",
+    "iperf3": "reverse-download throughput probe recorded in both runs",
+    "latency_test": "ICMP RTT probe to the protected service IP in both runs",
+    "pingall": "explicit connectivity test recorded in both runs"
+  },
+  "ts": "2026-04-30T09:16:33.759451+00:00"
+}

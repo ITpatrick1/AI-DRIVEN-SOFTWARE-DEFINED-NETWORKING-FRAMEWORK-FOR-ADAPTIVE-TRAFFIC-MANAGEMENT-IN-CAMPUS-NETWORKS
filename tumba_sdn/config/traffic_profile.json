@@ -1,0 +1,99 @@
+{
+  "zones": {
+    "staff_lan": {
+      "vlan": 10,
+      "priority": 1,
+      "bandwidth_guarantee_mbps": 40,
+      "bandwidth_max_mbps": 100,
+      "latency_slo_ms": 20,
+      "uptime_slo_pct": 99.9,
+      "working_hours": "08:00-17:00",
+      "security_level": "zero_trust_trusted",
+      "cross_zone_access": ["server_zone"],
+      "hosts": ["h_staff1", "h_staff2", "h_staff3", "h_staff4", "h_staff5", "h_staff6"],
+      "switch": "as1",
+      "uplink_bw_mbps": 100
+    },
+    "server_zone": {
+      "vlan": 20,
+      "priority": 1,
+      "bandwidth_guarantee_mbps": 30,
+      "bandwidth_max_mbps": 100,
+      "latency_slo_ms": 20,
+      "uptime_slo_pct": 99.9,
+      "security_level": "zero_trust_isolated",
+      "cross_zone_access": [],
+      "hosts": ["h_mis", "h_dhcp", "h_auth", "h_moodle"],
+      "switch": "as2",
+      "uplink_bw_mbps": 100
+    },
+    "it_lab": {
+      "vlan": 30,
+      "priority": 2,
+      "bandwidth_guarantee_mbps": 20,
+      "bandwidth_max_mbps": 100,
+      "latency_slo_ms": 30,
+      "uptime_slo_pct": 99.5,
+      "security_level": "semi_trusted",
+      "cross_zone_access": ["lab_servers_only"],
+      "hosts": ["h_lab1", "h_lab2", "h_lab3", "h_lab4"],
+      "switch": "as3",
+      "uplink_bw_mbps": 100
+    },
+    "student_wifi": {
+      "vlan": 40,
+      "priority": 3,
+      "bandwidth_guarantee_mbps": 10,
+      "bandwidth_max_mbps": 100,
+      "latency_slo_ms": 50,
+      "uptime_slo_pct": 95.0,
+      "security_level": "untrusted",
+      "cross_zone_access": ["moodle_only", "mis_during_exam_only"],
+      "exam_priority_override": 1,
+      "hosts": ["h_wifi1","h_wifi2","h_wifi3","h_wifi4","h_wifi5","h_wifi6","h_wifi7","h_wifi8","h_wifi9","h_wifi10"],
+      "switch": "as4",
+      "uplink_bw_mbps": 100
+    }
+  },
+  "congestion_thresholds": {
+    "link_utilization": 0.70,
+    "queue_depth": 150,
+    "latency_staff_ms": 20,
+    "latency_server_ms": 20,
+    "packet_loss_pct": 2.0,
+    "throughput_drop_pct": 0.30,
+    "warning": 0.70,
+    "congestion": 0.80,
+    "critical": 0.90
+  },
+  "dqn_weights": {
+    "staff_lan": 0.40,
+    "server_zone": 0.30,
+    "it_lab": 0.15,
+    "student_wifi": 0.10,
+    "security": 0.05
+  },
+  "academic_ips": {
+    "mis_exam": ["10.20.0.1"],
+    "moodle": ["10.20.0.2"],
+    "lab_servers": ["10.20.0.3"],
+    "auth": ["10.20.0.4"],
+    "social_media": [
+      "31.13.0.0/16",
+      "104.244.0.0/14",
+      "34.0.0.0/10"
+    ]
+  },
+  "zero_trust_rules": {
+    "default_deny": true,
+    "allowed_flows": [
+      {"src": "staff_lan", "dst": "server_zone", "ports": [80, 443], "proto": "tcp"},
+      {"src": "it_lab", "dst": "server_zone", "ports": [80, 443, 22, 3306], "proto": "tcp"},
+      {"src": "student_wifi", "dst": "server_zone", "ports": [80, 443], "proto": "tcp", "condition": "always"},
+      {"src": "student_wifi", "dst": "server_zone", "ports": [8443], "proto": "tcp", "condition": "exam_only"}
+    ],
+    "blocked_flows": [
+      {"src": "student_wifi", "dst": "staff_lan", "action": "drop", "reason": "Zero-trust: student cannot access staff"}
+    ]
+  }
+}

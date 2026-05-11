@@ -1,0 +1,24 @@
+{
+  "scenario": "exam",
+  "label": "Exam Period",
+  "started_at_ms": 1778507794195,
+  "duration_s": 60,
+  "convergence_time_ms": 1222.9,
+  "security_response_time_ms": null,
+  "failover_time_ms": null,
+  "throughput_before_mbps": 50.0,
+  "throughput_after_mbps": 50.0,
+  "throughput_peak_mbps": 0.0,
+  "reroute_triggered": false,
+  "throttle_triggered": true,
+  "ddos_blocked": 0,
+  "slo_violations": 0,
+  "dqn_reward": 0.85,
+  "zones": {},
+  "success": true,
+  "notes": [
+    "Exam period: MIS/portal traffic elevated to Priority Queue 1",
+    "Social media and bulk downloads \u2192 Queue 3 (throttled)",
+    "QoS policy enforced in 1222.9ms across 14 switches"
+  ]
+}

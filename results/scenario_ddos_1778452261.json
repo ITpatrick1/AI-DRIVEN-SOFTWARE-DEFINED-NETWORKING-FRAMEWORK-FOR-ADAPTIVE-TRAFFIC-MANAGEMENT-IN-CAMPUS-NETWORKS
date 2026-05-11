@@ -1,0 +1,24 @@
+{
+  "scenario": "ddos",
+  "label": "DDoS Attack",
+  "started_at_ms": 1778452231872,
+  "duration_s": 30,
+  "convergence_time_ms": null,
+  "security_response_time_ms": 5218.6,
+  "failover_time_ms": null,
+  "throughput_before_mbps": 50.0,
+  "throughput_after_mbps": 50.0,
+  "throughput_peak_mbps": 0.0,
+  "reroute_triggered": false,
+  "throttle_triggered": false,
+  "ddos_blocked": 12,
+  "slo_violations": 0,
+  "dqn_reward": 0.565,
+  "zones": {},
+  "success": true,
+  "notes": [
+    "DDoS attack: 10.0.4.46 \u2192 10.0.1.10 (udp_flood)",
+    "Security response in 5218.6ms \u2014 12 DROP flows installed",
+    "DQN security reward: 0.565"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "scenario": "all",
+  "label": "All Scenarios",
+  "started_at_ms": 1778452915626,
+  "duration_s": 90,
+  "convergence_time_ms": 7440.2,
+  "security_response_time_ms": 6568.0,
+  "failover_time_ms": 2771.8,
+  "throughput_before_mbps": 50.0,
+  "throughput_after_mbps": 50.0,
+  "throughput_peak_mbps": 323.01843772748765,
+  "reroute_triggered": true,
+  "throttle_triggered": false,
+  "ddos_blocked": 8,
+  "slo_violations": 0,
+  "dqn_reward": 1.0,
+  "zones": {},
+  "success": true,
+  "notes": [
+    "All scenarios running simultaneously (max stress)",
+    "DDoS mitigation: 8 flows blocked in 6568ms",
+    "DQN convergence: 7440ms",
+    "Failover recovery: 2772ms"
+  ]
+}

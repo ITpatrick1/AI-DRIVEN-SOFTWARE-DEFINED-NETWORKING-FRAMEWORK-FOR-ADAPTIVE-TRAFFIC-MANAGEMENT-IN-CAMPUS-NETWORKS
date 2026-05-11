@@ -1,0 +1,9 @@
+{
+  "congest_high_mbps": 36.16,
+  "congest_low_mbps": 20.25,
+  "port_congest_high_pct": 71.68,
+  "port_congest_low_pct": 56.68,
+  "priority_mode": "academic_first",
+  "response_count": 14,
+  "source": "stakeholder_requirements_csv"
+}
